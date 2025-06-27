@@ -1,0 +1,97 @@
+# --- Виртуальное окружение ---
+venv/
+.venv/
+env/
+.env/
+__pypackages__/
+
+# --- Конфиги и секреты ---
+.env
+.env.*
+!.env.example
+config.local.py
+secrets.ini
+
+# --- Python-артефакты ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+*.egg
+
+# --- Покрытие и профилирование ---
+htmlcov/
+.coverage
+nosetests.xml
+coverage.xml
+profiles/
+
+# --- Логи и временные файлы ---
+logs/
+*.log
+
+# --- Runtime-данные (ВАЖНО: оставить стартовые данные!) ---
+data/cache.json
+data/user_states.json
+data/shopping_lists.json
+data/categories_backup.json
+data/user_data/
+src/data/users.json
+
+# --- Monitoring ---
+monitoring/monitoring.json
+src/data/monitoring/
+
+# --- IDE/редакторы ---
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# Игнорировать временные, кэш-файлы и IDE
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.bak
+*.tmp
+.DS_Store
+
+# Игнорировать пользовательские и тестовые папки/файлы
+# --- добавлено по запросу пользователя ---
+eat/
+test_profiles/
+test/
+tests/
+.gitattributes
+.env
+.pre-commit-config.yaml
+pytest.ini
+IDEAS.md
+test_bot_connection.py
+test_send_start.py
+test_start_command.py
+
+# Приватные и служебные файлы
+.env
+.windsurfrules
+.cursorrules
+.editorconfig
+.coverage
+bot.lock
+junk.bat
+
+# Логи
+logs/
+*.log 
