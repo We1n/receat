@@ -1,10 +1,12 @@
+"""
+Универсальные функции для расчёта нутриентов по продуктам и рецептам.
+"""
 from typing import List, Dict, Any
-import re
 from src.services.product_service import ProductService
 
-async def calculate_from_text(text: str) -> str:
+def calculate_nutrients_from_text(text: str) -> Dict[str, Any]:
     """
-    Унифицированный калькулятор БЖУ: парсит текст, ищет продукты через ProductService, считает и форматирует результат.
+    Универсальный калькулятор БЖУ: парсит текст, ищет продукты через ProductService, считает и форматирует результат.
     """
     product_service = ProductService()
     lines = text.strip().split('\n')
@@ -14,6 +16,7 @@ async def calculate_from_text(text: str) -> str:
     for line in lines:
         if not line.strip():
             continue
+        import re
         match = re.match(r'^(.*?)\s+([\d.,]+)\s*(г|гр)?\.?', line.strip(), re.IGNORECASE)
         if match:
             name = match.group(1).strip().lower()
@@ -32,10 +35,10 @@ async def calculate_from_text(text: str) -> str:
                 errors.append(f"❌ Не удалось распознать строку: '{line}'")
 
     if errors:
-        return "\n".join(errors) + "\n\nПроверьте формат: `название продукта вес` (например, `овсянка 50г`)."
+        return {"success": False, "error": "\n".join(errors)}
 
     if not products:
-        return "❌ Не удалось найти ни одного продукта. Проверьте формат ввода и попробуйте снова."
+        return {"success": False, "error": "❌ Не удалось найти ни одного продукта. Проверьте формат ввода и попробуйте снова."}
 
     total = {"calories": 0.0, "protein": 0.0, "fat": 0.0, "carbs": 0.0}
     total_weight = 0.0
@@ -61,25 +64,11 @@ async def calculate_from_text(text: str) -> str:
         else:
             not_found_products.append(name)
 
-    if not results_by_product:
-        return "Не удалось найти ни один из указанных продуктов в базе. Проверьте названия."
-
-    result_lines = ["📊 *Результаты расчета БЖУ:*"]
-    if info_lines:
-        result_lines.extend(info_lines)
-    result_lines.append("*Детализация по продуктам:*")
-    result_lines.extend(results_by_product)
-    result_lines.append("\n" + "─" * 20)
-    result_lines.append(f"✅ *Итого ({int(total_weight)}г):*")
-    result_lines.append(f"   Калории: *{total['calories']:.1f} ккал*")
-    result_lines.append(f"   Белки: *{total['protein']:.1f} г*")
-    result_lines.append(f"   Жиры: *{total['fat']:.1f} г*")
-    result_lines.append(f"   Углеводы: *{total['carbs']:.1f} г*")
-
-    if not_found_products:
-        result_lines.append("\n" + "─" * 20)
-        result_lines.append("⚠️ *Следующие продукты не найдены в базе:*")
-        result_lines.extend([f"  - {name}" for name in not_found_products])
-        result_lines.append("\n_Расчет произведен без учета этих продуктов._")
-
-    return "\n".join(result_lines) 
+    return {
+        "success": True,
+        "info": info_lines,
+        "results_by_product": results_by_product,
+        "not_found": not_found_products,
+        "total": total,
+        "total_weight": total_weight
+    } 

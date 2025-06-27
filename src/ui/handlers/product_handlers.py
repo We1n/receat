@@ -39,7 +39,6 @@ def register_product_handlers(application):
     application.add_handler(CallbackQueryHandler(show_product_add_menu, pattern="^product_add$"))
     application.add_handler(CallbackQueryHandler(show_product_categories_menu, pattern="^product_categories$"))
     application.add_handler(CallbackQueryHandler(show_product_calculator_menu, pattern="^product_calculator$"))
-    application.add_handler(CallbackQueryHandler(product_category_view, pattern="^product_category_"))
     application.add_handler(CallbackQueryHandler(product_edit_menu, pattern="^product_edit_"))
     application.add_handler(CallbackQueryHandler(product_delete_confirm, pattern="^product_delete_"))
     application.add_handler(CallbackQueryHandler(product_delete, pattern="^product_delete_confirm_"))
@@ -166,47 +165,6 @@ async def show_product_calculator_menu(update: Update, context: ContextTypes.DEF
     if context.user_data is not None:
         context.user_data["state"] = NUTRIENT_CALCULATOR
     logger.info("Показано меню универсального калькулятора БЖУ")
-
-# Просмотр продуктов по категории
-async def product_category_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query or not getattr(query, 'data', None):
-        return
-    await query.answer()
-    category_data = query.data
-    if not category_data or not isinstance(category_data, str):
-        return
-    category = category_data.replace("product_category_", "")
-    products = await product_service.get_products_by_category(category)
-    
-    if not products:
-        text = f"📋 *Продукты в категории '{category}'*\n\nПродукты не найдены."
-        keyboard = KeyboardFactory.get("back")
-    else:
-        text = f"📋 *Продукты в категории '{category}'*\n\n"
-        keyboard = []
-        
-        # Группируем продукты по 2 в ряд
-        for i in range(0, len(products), 2):
-            row = []
-            row.append(InlineKeyboardButton(products[i]['name'], callback_data=f"product_edit_{products[i]['id']}"))
-            
-            # Добавляем второй продукт в ряд, если он есть
-            if i + 1 < len(products):
-                row.append(InlineKeyboardButton(products[i + 1]['name'], callback_data=f"product_edit_{products[i + 1]['id']}"))
-            
-            keyboard.append(row)
-        
-        keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="product_categories")])
-        keyboard = InlineKeyboardMarkup(keyboard)
-    
-    await ui_service._send_or_edit_message(
-        update=update,
-        context=context,
-        text=text,
-        reply_markup=keyboard
-    )
-    logger.info(f"Показаны продукты категории: {category}")
 
 # Меню редактирования продукта
 async def product_edit_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):

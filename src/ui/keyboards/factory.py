@@ -4,6 +4,16 @@
 """
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from typing import Optional, List, Dict, Any
+import logging
+
+ADD_RECIPE_CALLBACK = "add_recipe"
+
+logger = logging.getLogger("src.ui.keyboards.factory")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+if not logger.hasHandlers():
+    logger.addHandler(handler)
 
 class KeyboardFactory:
     """
@@ -16,8 +26,6 @@ class KeyboardFactory:
             return KeyboardFactory._main_menu()
         elif keyboard_type == "recipe_menu":
             return KeyboardFactory._recipe_menu()
-        elif keyboard_type == "category_management_menu":
-            return KeyboardFactory._category_management_menu(kwargs.get("categories", []))
         elif keyboard_type == "products_menu":
             return KeyboardFactory._products_menu()
         elif keyboard_type == "collaborative_menu":
@@ -28,8 +36,6 @@ class KeyboardFactory:
             return KeyboardFactory._dynamic_inline(kwargs.get("buttons", []))
         elif keyboard_type == "dynamic_reply":
             return KeyboardFactory._dynamic_reply(kwargs.get("buttons", []))
-        elif keyboard_type == "confirm":
-            return KeyboardFactory._confirm()
         elif keyboard_type == "back":
             return KeyboardFactory._back()
         else:
@@ -50,7 +56,7 @@ class KeyboardFactory:
         keyboard = [
             [
                 InlineKeyboardButton("🔍 Поиск", callback_data="recipe_search"),
-                InlineKeyboardButton("➕ Добавить", callback_data="recipe_add")
+                InlineKeyboardButton("➕ Добавить", callback_data=ADD_RECIPE_CALLBACK)
             ],
             [
                 InlineKeyboardButton("📋 Мои рецепты", callback_data="recipe_list"),
@@ -59,31 +65,6 @@ class KeyboardFactory:
             [InlineKeyboardButton("🧮 Калькулятор БЖУ", callback_data="product_calculator")],
             [InlineKeyboardButton("◀️ Назад", callback_data="back")]
         ]
-        return InlineKeyboardMarkup(keyboard)
-
-    @staticmethod
-    def _category_management_menu(categories: list) -> InlineKeyboardMarkup:
-        """Клавиатура для управления категориями"""
-        keyboard = []
-        
-        # Группируем категории по 2 в ряд
-        for i in range(0, len(categories), 2):
-            row = []
-            row.append(InlineKeyboardButton(categories[i], callback_data=f"category_{categories[i]}"))
-            
-            # Добавляем вторую категорию в ряд, если она есть
-            if i + 1 < len(categories):
-                row.append(InlineKeyboardButton(categories[i + 1], callback_data=f"category_{categories[i + 1]}"))
-            
-            keyboard.append(row)
-        
-        # Добавляем кнопки управления
-        keyboard.append([
-            InlineKeyboardButton("➕ Добавить", callback_data="category_add"),
-            InlineKeyboardButton("✏️ Редактировать", callback_data="category_edit"),
-            InlineKeyboardButton("🗑️ Удалить", callback_data="category_delete")
-        ])
-        keyboard.append([InlineKeyboardButton("◀️ Назад в рецепты", callback_data="back_to_recipes")])
         return InlineKeyboardMarkup(keyboard)
 
     @staticmethod
@@ -164,15 +145,6 @@ class KeyboardFactory:
         return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     @staticmethod
-    def _confirm() -> InlineKeyboardMarkup:
-        keyboard = [
-            [InlineKeyboardButton("✅ Подтвердить", callback_data="recipe_delete_confirm_yes"),
-             InlineKeyboardButton("❌ Отмена", callback_data="recipe_delete_confirm_no")],
-            [InlineKeyboardButton("◀️ Назад", callback_data="back")]
-        ]
-        return InlineKeyboardMarkup(keyboard)
-
-    @staticmethod
     def _back() -> InlineKeyboardMarkup:
         keyboard = [
             [InlineKeyboardButton("◀️ Назад", callback_data="back")]
@@ -180,15 +152,18 @@ class KeyboardFactory:
         return InlineKeyboardMarkup(keyboard)
 
     @staticmethod
-    def get_confirmation_keyboard(action_prefix: str, entity_id: int):
+    def get_confirmation_keyboard(action_prefix: str, entity_id, back_callback: str = "back") -> InlineKeyboardMarkup:
         """
         Универсальная клавиатура подтверждения для любых сущностей.
-        action_prefix: например, 'recipe_delete_confirm', 'category_delete_confirm'
-        entity_id: только числовой ID (никаких имён!)
+        action_prefix: например, 'recipe_delete_confirm'
+        entity_id: строка или число (UUID или int)
+        back_callback: callback_data для кнопки отмены (по умолчанию 'back')
         """
+        callback_data = f"{action_prefix}_{entity_id}"
+        logger.info(f"[KEYBOARD] callback_data={callback_data}, длина={len(callback_data)}, type(entity_id)={type(entity_id)}, value={entity_id}")
         keyboard = [
-            [InlineKeyboardButton("✅ Подтвердить", callback_data=f"{action_prefix}_{entity_id}")],
-            [InlineKeyboardButton("❌ Отмена", callback_data="back")]
+            [InlineKeyboardButton("✅ Подтвердить", callback_data=callback_data)],
+            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
         ]
         return InlineKeyboardMarkup(keyboard)
 

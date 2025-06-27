@@ -4,6 +4,7 @@
 import sys
 import codecs
 import psutil  # Для проверки PID
+import logging
 
 # Исправление для Windows event loop - ДОЛЖНО БЫТЬ В САМОМ НАЧАЛЕ
 if sys.platform == 'win32':
@@ -143,3 +144,10 @@ if __name__ == "__main__":
         logger.critical(f"A critical error occurred in the main execution block: {e}", exc_info=True)
     finally:
         cleanup_lock_file()
+
+# Add FileHandler for root-logger
+fh = logging.FileHandler('logs/bot.log', encoding='utf-8')
+fh.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+logging.getLogger().addHandler(fh)

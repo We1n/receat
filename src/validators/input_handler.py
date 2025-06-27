@@ -13,7 +13,7 @@ from telegram.ext import ContextTypes
 from pydantic import ValidationError, BaseModel
 
 from .schemas import (
-    RecipeDTO, UserProfileDTO, UserMealDTO, CategoryDTO,
+    RecipeDTO, UserProfileDTO, UserMealDTO,
     SearchQueryDTO, FilterDTO, ProductDTO, ProductSearchDTO, ProductCalculatorDTO,
     NutrientSearchDTO, NutrientCalculatorDTO,
     ValidationErrorResponse, create_error_response
@@ -55,7 +55,6 @@ class InputHandler:
             'recipe': RecipeDTO,
             'user_profile': UserProfileDTO,
             'user_meal': UserMealDTO,
-            'category': CategoryDTO,
             'search_query': SearchQueryDTO,
             'filter': FilterDTO,
             'product': ProductDTO,
@@ -203,8 +202,6 @@ class InputHandler:
                     
                     if key == "название":
                         product_data["name"] = value
-                    elif key == "категория":
-                        product_data["category"] = value
                     elif key == "калории":
                         nutrients["calories"] = float(value.replace("ккал", "").replace("г", ""))
                     elif key == "белки":

@@ -19,7 +19,6 @@ class ProductInfo(TypedDict):
     """Тип для информации о продукте."""
     id: int
     name: str
-    category: str
     nutrients: Dict[str, float]
     unit: str
     description: str
@@ -50,10 +49,10 @@ class ProductService:
                 self._create_default_data()
             with open(self.products_file, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
-                if isinstance(loaded, list):
-                    self.data = {"products": loaded, "last_update": None}
-                else:
+                if isinstance(loaded, dict) and isinstance(loaded.get("products"), list):
                     self.data = loaded
+                else:
+                    self.data = {"products": [], "last_update": None}
             logger.info("✅ Данные о продуктах загружены")
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки данных: {str(e)}")
@@ -76,7 +75,6 @@ class ProductService:
                 {
                     "id": 1,
                     "name": "Куриная грудка",
-                    "category": "Мясо",
                     "nutrients": {
                         "calories": 110.0,
                         "protein": 23.0,
@@ -96,7 +94,6 @@ class ProductService:
                 {
                     "id": 2,
                     "name": "Рис",
-                    "category": "Крупы",
                     "nutrients": {
                         "calories": 130.0,
                         "protein": 2.7,
@@ -116,7 +113,6 @@ class ProductService:
                 {
                     "id": 3,
                     "name": "Яблоко",
-                    "category": "Фрукты",
                     "nutrients": {
                         "calories": 52.0,
                         "protein": 0.3,
@@ -157,8 +153,6 @@ class ProductService:
                 return product
         return None
     
-    @ErrorHandler.handle_errors
-    @cache_result(ttl=3600, key_template="all_products")
     def get_all_products(self) -> List[ProductInfo]:
         """
         Получение списка всех продуктов.
@@ -169,29 +163,12 @@ class ProductService:
         return self.data["products"]
     
     @ErrorHandler.handle_errors
-    @cache_result(ttl=3600, key_template="category_{category}")
-    def get_products_by_category(self, category: str) -> List[ProductInfo]:
-        """
-        Получение списка продуктов по категории.
-        
-        Args:
-            category: Категория продуктов
-            
-        Returns:
-            List[ProductInfo]: Список продуктов
-        """
-        return [p for p in self.data["products"] if p["category"] == category]
-    
-    @ErrorHandler.handle_errors
-    @invalidate_cache(key_template="all_products")
-    def add_product(self, name: str, category: str, nutrients: Dict[str, float], 
-                   unit: str, description: str, emoji: str) -> ProductInfo:
+    def add_product(self, name: str, nutrients: Dict[str, float], unit: str, description: str, emoji: str) -> ProductInfo:
         """
         Добавление нового продукта.
         
         Args:
             name: Название продукта
-            category: Категория
             nutrients: Питательные вещества (calories, protein, fat, carbs, fiber, sugar, sodium, cholesterol)
             unit: Единица измерения
             description: Описание
@@ -219,7 +196,6 @@ class ProductService:
         new_product = {
             "id": new_id,
             "name": name,
-            "category": category,
             "nutrients": nutrients,
             "unit": unit,
             "description": description,
@@ -233,10 +209,9 @@ class ProductService:
         self._save_data()
         
         logger.info(f"✅ Добавлен новый продукт: {name}")
-        return new_product
+        return new_product  # type: ignore
     
     @ErrorHandler.handle_errors
-    @invalidate_cache(key_template="product_{product_id}")
     def update_product(self, product_id: int, **kwargs: Any) -> Optional[ProductInfo]:
         """
         Обновление информации о продукте.
@@ -280,7 +255,6 @@ class ProductService:
         return None
     
     @ErrorHandler.handle_errors
-    @invalidate_cache(key_template="product_{product_id}")
     async def delete_product(self, product_id: int) -> bool:
         logger = logging.getLogger(__name__)
         logger.info(f"[DEBUG] Вход в delete_product: product_id={product_id}")
@@ -384,13 +358,6 @@ class ProductService:
         if not query:
             return []
         return [p for p in self.data["products"] if query in p["name"].lower()]
-
-    def get_categories(self) -> list[str]:
-        """Возвращает список уникальных категорий продуктов."""
-        if not hasattr(self, 'data') or 'products' not in self.data:
-            return []
-        categories = {p.get('category', '').strip() for p in self.data['products'] if p.get('category')}
-        return sorted(categories)
 
     async def invalidate_cache(self):
         """Асинхронно сбрасывает кэш, если он есть."""

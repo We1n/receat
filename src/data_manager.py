@@ -12,7 +12,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 from src.config.config import Config
-from src.validators.schemas import RecipeDTO, CategoryDTO, ValidationErrorResponse
+from src.validators.schemas import RecipeDTO, ValidationErrorResponse
 from src.validators.input_handler import InputHandler
 from src.search import RecipeSearcher
 from src.ui.navigation import SearchResultsNavigator, SortOrder
@@ -25,7 +25,6 @@ class DataManager:
         self.data_dir = Path("src/data")
         self.recipes_file = self.data_dir / "recipes.json"
         self.users_file = self.data_dir / "users.json"
-        self.categories_file = self.data_dir / "categories.json"
         
         # Новая система валидации
         self.input_handler = InputHandler()
@@ -37,7 +36,6 @@ class DataManager:
         self._cache: Dict[str, Any] = {
             "recipes": None,
             "users": None,
-            "categories": None,
             "last_update": None
         }
         
@@ -57,9 +55,6 @@ class DataManager:
         
         if not self.users_file.exists():
             self._save_json(self.users_file, {"users": {}})
-        
-        if not self.categories_file.exists():
-            self._save_json(self.categories_file, {"categories": []})
     
     def _load_all_data(self) -> None:
         """Загрузка всех данных и построение индексов"""
@@ -67,7 +62,6 @@ class DataManager:
             # Загружаем данные
             self._cache["recipes"] = self._load_json(self.recipes_file)
             self._cache["users"] = self._load_json(self.users_file)
-            self._cache["categories"] = self._load_json(self.categories_file)
             self._cache["last_update"] = time.time()
             
             logger.info("Данные успешно загружены и индексы построены")
@@ -76,7 +70,6 @@ class DataManager:
             # В случае ошибки используем пустые структуры
             self._cache["recipes"] = {"recipes": []}
             self._cache["users"] = {"users": {}}
-            self._cache["categories"] = {"categories": []}
     
     def _load_json(self, file_path: Path) -> Dict[str, Any]:
         """Загрузка данных из JSON-файла"""
@@ -131,8 +124,6 @@ class DataManager:
                 self._cache["recipes"] = self._load_json(self.recipes_file)
             elif cache_key == "users":
                 self._cache["users"] = self._load_json(self.users_file)
-            elif cache_key == "categories":
-                self._cache["categories"] = self._load_json(self.categories_file)
             
             self._cache["last_update"] = time.time()
             
@@ -140,16 +131,12 @@ class DataManager:
         except Exception as e:
             logger.error(f"Ошибка при обновлении кэша {cache_key}: {e}")
     
-    def get_recipes(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_recipes(self) -> List[Dict[str, Any]]:
         """Получение списка рецептов"""
         if not self._check_cache("recipes"):
             self._update_cache("recipes")
         
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
-        
-        if category:
-            category = category.lower()
-            return [r for r in recipes if r.get("category", "").lower() == category]
         
         return recipes
     
@@ -250,11 +237,11 @@ class DataManager:
         
         return False
     
-    def get_random_recipe(self, category: Optional[str] = None) -> Optional[Dict]:
-        """Получение случайного рецепта с возможностью фильтрации по категории"""
+    def get_random_recipe(self) -> Optional[Dict]:
+        """Получение случайного рецепта"""
         import random
         
-        recipes = self.get_recipes(category)
+        recipes = self.get_recipes()
         if not recipes:
             return None
         
@@ -417,39 +404,3 @@ class DataManager:
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
         results = self.searcher.find_recipes_by_multiple_criteria(recipes, criteria)
         return SearchResultsNavigator([{"recipe": r, "match_percentage": 100.0} for r in results])
-
-    def add_category(self, category: Dict[str, Any]) -> Tuple[bool, Optional[List[Dict[str, str]]]]:
-        """
-        Добавление новой категории
-        
-        Args:
-            category: Словарь с данными категории
-            
-        Returns:
-            Tuple[bool, Optional[List[Dict[str, str]]]]: (результат операции, список ошибок валидации)
-        """
-        # Валидируем категорию через новую систему
-        validation_result = self.input_handler.validate_input(
-            data=category,
-            schema_name="CategoryDTO",
-            user_message="Ошибка валидации категории"
-        )
-        
-        # Проверяем, является ли результат ошибкой валидации
-        if isinstance(validation_result, ValidationErrorResponse):
-            return False, [validation_result.errors]
-        
-        categories = self._cache["categories"].get("categories", [])
-        
-        # Генерация нового ID
-        new_id = 1
-        if categories:
-            new_id = max(cat.get("id", 0) for cat in categories) + 1
-        
-        category["id"] = new_id
-        categories.append(category)
-        
-        self._cache["categories"]["categories"] = categories
-        success = self._save_json(self.categories_file, self._cache["categories"])
-        
-        return success, None

@@ -12,7 +12,6 @@ class States(Enum):
     PRODUCTS_MENU = "products_menu"
     COLLABORATIVE_MENU = auto()
     SETTINGS_MENU = "settings_menu"
-    CATEGORIES_MENU = auto()
     
     # Состояния для работы с рецептами
     RECIPE_SEARCH = "recipe_search"
@@ -36,21 +35,6 @@ class States(Enum):
     # Состояния для совместной работы
     COLLABORATIVE_INVITE = "collaborative_invite"
     COLLABORATIVE_ACCEPT = "collaborative_accept"
-    
-    # Состояния для категорий
-    CATEGORY_ADD = "category_add"
-    CATEGORY_EDIT = "category_edit"
-    ADDING_CATEGORY = auto()
-    EDITING_CATEGORY = auto()
-    RENAMING_CATEGORY = auto()
-    DELETING_CATEGORY = auto()
-    CONFIRMING_DELETE = auto()
-    CHOOSING_ACTION = auto()
-    AWAITING_CATEGORY_NAME = auto()
-    AWAITING_CATEGORY_TO_EDIT = auto()
-    AWAITING_NEW_CATEGORY_NAME = auto()
-    AWAITING_CATEGORY_TO_DELETE = auto()
-    CONFIRMING_DELETE_CATEGORY = auto()
     
     # Общие состояния
     WAITING_INPUT = "waiting_input"

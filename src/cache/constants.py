@@ -2,9 +2,6 @@
 
 # Шаблоны ключей для кэша
 CACHE_KEYS = {
-    "categories": "categories",
-    "category": "category_{category_id}",
-    "category_by_name": "category_by_name_{name}",
     "users": "users",
     "user": "user_{user_id}",
     "user_by_username": "user_by_username_{username}",
@@ -16,7 +13,6 @@ CACHE_KEYS = {
     "recipes": "recipes",
     "recipe": "recipe_{recipe_name}",
     "search": "search_{query}",
-    "recipes_by_category": "recipes_by_category_{category_id}",
     "recipes_by_ingredients": "recipes_by_ingredients_{ingredients}",
     "recipes_by_difficulty": "recipes_by_difficulty_{difficulty}",
     "recipe_servings": "recipe_servings_{recipe_name}_{target_servings}",
@@ -30,9 +26,6 @@ CACHE_KEYS = {
 
 # Время жизни кэша (TTL) в секундах
 CACHE_TTL = {
-    "categories": 3600,
-    "category": 3600,
-    "category_by_name": 3600,
     "users": 3600,
     "user": 3600,
     "user_by_username": 3600,
@@ -44,7 +37,6 @@ CACHE_TTL = {
     "recipes": 3600,
     "recipe": 3600,
     "search": 600,
-    "recipes_by_category": 1800,
     "recipes_by_ingredients": 1800,
     "recipes_by_difficulty": 1800,
     "recipe_servings": 1800,
@@ -58,9 +50,6 @@ CACHE_TTL = {
 
 # Префиксы для ключей кэша
 CACHE_PREFIXES = {
-    "categories": "cat:",
-    "category": "cat:",
-    "category_by_name": "cat:",
     "users": "usr:",
     "user": "usr:",
     "user_by_username": "usr:",
@@ -72,7 +61,6 @@ CACHE_PREFIXES = {
     "recipes": "rec:",
     "recipe": "rec:",
     "search": "rec:",
-    "recipes_by_category": "rec:",
     "recipes_by_ingredients": "rec:",
     "recipes_by_difficulty": "rec:",
     "recipe_servings": "rec:",

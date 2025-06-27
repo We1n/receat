@@ -5,7 +5,6 @@
 - main_menu — главное меню (InlineKeyboard)
 - recipe_menu — меню рецептов (InlineKeyboard)
 - products_menu — меню продуктов (InlineKeyboard)
-- category_management_menu — меню управления категориями (InlineKeyboard)
 - collaborative_menu — меню совместной работы (InlineKeyboard)
 - dynamic_inline — динамическая inline клавиатура
 - dynamic_reply — динамическая reply клавиатура

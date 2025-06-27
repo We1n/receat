@@ -356,17 +356,6 @@ def create_dynamic_keyboard(items: list, back_button: bool = True) -> InlineKeyb
     
     return InlineKeyboardMarkup(keyboard)
 
-def create_confirm_keyboard() -> InlineKeyboardMarkup:
-    """Создать клавиатуру подтверждения"""
-    keyboard = [
-        [
-            InlineKeyboardButton("✅ Подтвердить", callback_data="recipe_delete_confirm_yes"),
-            InlineKeyboardButton("❌ Отмена", callback_data="recipe_delete_confirm_no")
-        ],
-        [InlineKeyboardButton("◀️ Назад", callback_data="back")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
 def create_back_keyboard() -> InlineKeyboardMarkup:
     """Создать клавиатуру с кнопкой "Назад" """
     keyboard = [

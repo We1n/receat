@@ -62,10 +62,9 @@ class NutrientsDTO(BaseModel):
 
 class RecipeDTO(BaseModel):
     """DTO для рецепта"""
-    name: str = Field(..., min_length=3, max_length=200, description="Название рецепта")
-    category: str = Field(..., min_length=1, max_length=50, description="Категория")
-    ingredients: List[IngredientDTO] = Field(..., min_items=1, description="Список ингредиентов")
-    instructions: str = Field(..., min_length=10, max_length=5000, description="Инструкции по приготовлению")
+    name: str = Field(..., description="Название рецепта")
+    ingredients: List[IngredientDTO] = Field(..., description="Список ингредиентов")
+    instructions: str = Field(..., description="Инструкции по приготовлению")
     nutrients: NutrientsDTO = Field(..., description="Питательные вещества")
     cooking_time: int = Field(..., ge=1, le=1440, description="Время приготовления в минутах")
     difficulty: str = Field(..., description="Сложность")
@@ -82,14 +81,6 @@ class RecipeDTO(BaseModel):
             raise ValueError(f"Недопустимый уровень сложности. Разрешены: {', '.join(allowed_levels)}")
         return v
     
-    @validator('category')
-    def validate_category(cls, v):
-        """Валидация категории"""
-        allowed_categories = ["завтрак", "обед", "ужин", "перекус", "десерт", "напитки"]
-        if v.lower() not in [cat.lower() for cat in allowed_categories]:
-            raise ValueError(f"Недопустимая категория. Разрешены: {', '.join(allowed_categories)}")
-        return v.lower()
-    
     @validator('tags')
     def validate_tags(cls, v):
         """Валидация тегов"""
@@ -102,7 +93,6 @@ class RecipeDTO(BaseModel):
 class RecipeSearchDTO(BaseModel):
     """DTO для поиска рецептов"""
     query: Optional[str] = Field(None, max_length=100, description="Поисковый запрос")
-    category: Optional[str] = Field(None, description="Категория")
     max_cooking_time: Optional[int] = Field(None, ge=1, le=1440, description="Максимальное время приготовления")
     difficulty: Optional[str] = Field(None, description="Сложность")
     max_calories: Optional[float] = Field(None, ge=0, le=10000, description="Максимальная калорийность")
@@ -187,25 +177,6 @@ class UserMealDTO(BaseModel):
         return self
 
 # ============================================================================
-# СХЕМЫ ДЛЯ КАТЕГОРИЙ
-# ============================================================================
-
-class CategoryDTO(BaseModel):
-    """DTO для категории"""
-    id: Optional[int] = Field(None, gt=0, description="ID категории")
-    name: str = Field(..., min_length=1, max_length=50, description="Название категории")
-    parent_id: Optional[int] = Field(None, gt=0, description="ID родительской категории")
-    description: Optional[str] = Field(None, max_length=200, description="Описание")
-    icon: Optional[str] = Field(None, max_length=50, description="Иконка")
-    
-    @validator('name')
-    def validate_name(cls, v):
-        """Валидация названия категории"""
-        if not v.strip():
-            raise ValueError("Название категории не может быть пустым")
-        return v.strip()
-
-# ============================================================================
 # СХЕМЫ ДЛЯ ПРОДУКТОВ
 # ============================================================================
 
@@ -222,8 +193,7 @@ class ProductNutrientsDTO(BaseModel):
 
 class ProductDTO(BaseModel):
     """DTO для продукта"""
-    name: str = Field(..., min_length=1, max_length=100, description="Название продукта")
-    category: str = Field(..., min_length=1, max_length=50, description="Категория продукта")
+    name: str = Field(..., description="Название продукта")
     nutrients: ProductNutrientsDTO = Field(..., description="Питательные вещества")
     unit: str = Field("г", description="Единица измерения")
     description: Optional[str] = Field(None, max_length=500, description="Описание")
@@ -234,13 +204,6 @@ class ProductDTO(BaseModel):
         """Валидация названия продукта"""
         if not v.strip():
             raise ValueError("Название продукта не может быть пустым")
-        return v.strip()
-    
-    @validator('category')
-    def validate_category(cls, v):
-        """Валидация категории продукта"""
-        if not v.strip():
-            raise ValueError("Категория продукта не может быть пустой")
         return v.strip()
     
     @validator('unit')
@@ -316,7 +279,7 @@ class SearchQueryDTO(BaseModel):
     @validator('search_type')
     def validate_search_type(cls, v):
         """Валидация типа поиска"""
-        allowed_types = ["recipe", "ingredient", "category", "user"]
+        allowed_types = ["recipe", "ingredient", "user"]
         if v not in allowed_types:
             raise ValueError(f"Недопустимый тип поиска. Разрешены: {', '.join(allowed_types)}")
         return v
@@ -373,14 +336,6 @@ class UserProfileResponse(BaseResponse):
 class UserMealResponse(BaseResponse):
     """Ответ с приемом пищи"""
     data: Optional[UserMealDTO] = Field(None, description="Данные приема пищи")
-
-class CategoryResponse(BaseResponse):
-    """Ответ с категорией"""
-    data: Optional[CategoryDTO] = Field(None, description="Данные категории")
-
-class CategoryListResponse(BaseResponse):
-    """Ответ со списком категорий"""
-    data: Optional[List[CategoryDTO]] = Field(None, description="Список категорий")
 
 # ============================================================================
 # УТИЛИТЫ ДЛЯ ВАЛИДАЦИИ
