@@ -15,7 +15,6 @@ from src.config.config import Config
 from src.validators.schemas import RecipeDTO, ValidationErrorResponse
 from src.validators.input_handler import InputHandler
 from src.search import RecipeSearcher
-from src.ui.navigation import SearchResultsNavigator, SortOrder
 
 class DataManager:
     """Класс для управления данными в JSON-формате"""
@@ -307,7 +306,7 @@ class DataManager:
         
         return adjusted_ingredients
 
-    def find_recipes_by_ingredients(self, available_ingredients: List[str]) -> SearchResultsNavigator:
+    def find_recipes_by_ingredients(self, available_ingredients: List[str]) -> List[Dict[str, Any]]:
         """
         Поиск рецептов по доступным ингредиентам
         
@@ -315,16 +314,16 @@ class DataManager:
             available_ingredients: Список доступных ингредиентов
             
         Returns:
-            SearchResultsNavigator: Навигатор по результатам поиска
+            List[Dict[str, Any]]: Список результатов поиска
         """
         if not self._check_cache("recipes"):
             self._update_cache("recipes")
         
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
         results = self.searcher.find_recipes_by_ingredients(recipes, available_ingredients)
-        return SearchResultsNavigator(results)
+        return results
     
-    def find_recipes_by_name(self, query: str, limit: int = 5) -> SearchResultsNavigator:
+    def find_recipes_by_name(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Поиск рецептов по названию
         
@@ -333,16 +332,16 @@ class DataManager:
             limit: Максимальное количество результатов
             
         Returns:
-            SearchResultsNavigator: Навигатор по результатам поиска
+            List[Dict[str, Any]]: Список результатов поиска
         """
         if not self._check_cache("recipes"):
             self._update_cache("recipes")
         
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
         results = self.searcher.find_recipes_by_name(recipes, query, limit)
-        return SearchResultsNavigator([{"recipe": r[0], "match_percentage": r[1]} for r in results])
+        return [{"recipe": r[0], "match_percentage": r[1]} for r in results]
     
-    def find_recipes_by_difficulty(self, difficulty: str, exact_match: bool = False) -> SearchResultsNavigator:
+    def find_recipes_by_difficulty(self, difficulty: str, exact_match: bool = False) -> List[Dict[str, Any]]:
         """
         Поиск рецептов по сложности
         
@@ -351,20 +350,20 @@ class DataManager:
             exact_match: Требовать точное совпадение
             
         Returns:
-            SearchResultsNavigator: Навигатор по результатам поиска
+            List[Dict[str, Any]]: Список результатов поиска
         """
         if not self._check_cache("recipes"):
             self._update_cache("recipes")
         
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
         results = self.searcher.find_recipes_by_difficulty(recipes, difficulty, exact_match)
-        return SearchResultsNavigator([{"recipe": r, "match_percentage": 100.0} for r in results])
+        return [{"recipe": r, "match_percentage": 100.0} for r in results]
     
     def find_recipes_by_cooking_time(
         self,
         max_time: int,
         min_time: Optional[int] = None
-    ) -> SearchResultsNavigator:
+    ) -> List[Dict[str, Any]]:
         """
         Поиск рецептов по времени приготовления
         
@@ -373,16 +372,16 @@ class DataManager:
             min_time: Минимальное время приготовления в минутах
             
         Returns:
-            SearchResultsNavigator: Навигатор по результатам поиска
+            List[Dict[str, Any]]: Список результатов поиска
         """
         if not self._check_cache("recipes"):
             self._update_cache("recipes")
         
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
         results = self.searcher.find_recipes_by_cooking_time(recipes, max_time, min_time)
-        return SearchResultsNavigator([{"recipe": r, "match_percentage": 100.0} for r in results])
+        return [{"recipe": r, "match_percentage": 100.0} for r in results]
     
-    def find_recipes_by_multiple_criteria(self, criteria: Dict[str, Any]) -> SearchResultsNavigator:
+    def find_recipes_by_multiple_criteria(self, criteria: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Поиск рецептов по нескольким критериям
         
@@ -396,11 +395,11 @@ class DataManager:
                 - name: str - название
                 
         Returns:
-            SearchResultsNavigator: Навигатор по результатам поиска
+            List[Dict[str, Any]]: Список результатов поиска
         """
         if not self._check_cache("recipes"):
             self._update_cache("recipes")
         
         recipes: List[Dict[str, Any]] = self._cache["recipes"].get("recipes", [])
         results = self.searcher.find_recipes_by_multiple_criteria(recipes, criteria)
-        return SearchResultsNavigator([{"recipe": r, "match_percentage": 100.0} for r in results])
+        return [{"recipe": r, "match_percentage": 100.0} for r in results]

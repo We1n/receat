@@ -4,7 +4,7 @@
 
 from typing import Optional, Dict, Any
 from telegram import InlineKeyboardMarkup
-from src.ui.navigation import NavigationManager, NavigationSection
+from src.ui.navigation import NavigationManager
 
 class MessageFormatter:
     """Базовый класс для форматирования сообщений"""
@@ -16,7 +16,7 @@ class MessageFormatter:
     def format_message(
         self,
         text: str,
-        section: Optional[NavigationSection] = None,
+        section: Optional[str] = None,
         keyboard: Optional[InlineKeyboardMarkup] = None,
         tip: Optional[str] = None,
         error: Optional[str] = None,
@@ -72,7 +72,7 @@ class MessageFormatter:
             'parse_mode': 'Markdown'
         }
     
-    def format_error(self, error: str, section: Optional[NavigationSection] = None) -> Dict[str, Any]:
+    def format_error(self, error: str, section: Optional[str] = None) -> Dict[str, Any]:
         """
         Форматирует сообщение об ошибке
         
@@ -89,7 +89,7 @@ class MessageFormatter:
             error=error
         )
     
-    def format_success(self, message: str, section: Optional[NavigationSection] = None) -> Dict[str, Any]:
+    def format_success(self, message: str, section: Optional[str] = None) -> Dict[str, Any]:
         """
         Форматирует сообщение об успехе
         
@@ -106,7 +106,7 @@ class MessageFormatter:
             success=message
         )
     
-    def format_warning(self, message: str, section: Optional[NavigationSection] = None) -> Dict[str, Any]:
+    def format_warning(self, message: str, section: Optional[str] = None) -> Dict[str, Any]:
         """
         Форматирует предупреждение
         
@@ -123,7 +123,7 @@ class MessageFormatter:
             warning=message
         )
     
-    def format_info(self, message: str, section: Optional[NavigationSection] = None) -> Dict[str, Any]:
+    def format_info(self, message: str, section: Optional[str] = None) -> Dict[str, Any]:
         """
         Форматирует информационное сообщение
         

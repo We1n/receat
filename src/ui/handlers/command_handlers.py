@@ -7,7 +7,6 @@ from telegram.ext import ContextTypes, CommandHandler
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from src.monitoring.profiler import Profiler
 from src.utils.error_handler import ErrorHandler
-from src.ui.navigation import NavigationSection
 from src.config.states import States
 from src.ui.keyboards import KeyboardFactory
 from src.ui.ui_service import ui_service
@@ -46,7 +45,6 @@ class CommandHandlers:
             "/help - Показать эту справку\n"
             "/recipes - Меню рецептов\n"
             "/products - Меню продуктов\n"
-            "/categories - Управление категориями\n"
             "/nutrients - Калькулятор БЖУ\n"
             "/collaborative - Совместная работа\n\n"
             "💡 *Советы:*\n"

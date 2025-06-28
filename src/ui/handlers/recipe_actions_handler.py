@@ -87,7 +87,15 @@ async def recipe_view_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     if not recipe:
         await query.edit_message_text("❌ Рецепт не найден.")
         return
-    text = f"*{recipe['name']}*\n\nИнгредиенты:\n" + "\n".join(recipe.get('ingredients', []))
+    ingredients = recipe.get('ingredients', [])
+    if ingredients and isinstance(ingredients[0], dict):
+        ingredients_lines = [
+            f"- {i.get('name', '')} {i.get('amount', '')}{i.get('unit', '')}".strip()
+            for i in ingredients
+        ]
+    else:
+        ingredients_lines = [str(i) for i in ingredients]
+    text = f"*{recipe['name']}*\n\nИнгредиенты:\n" + "\n".join(ingredients_lines)
     text += f"\n\nИнструкция:\n{recipe.get('instructions', '')}"
     await query.edit_message_text(text, parse_mode="Markdown")
 

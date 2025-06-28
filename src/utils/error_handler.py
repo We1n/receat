@@ -7,6 +7,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from typing import Optional, Callable, Any
 from src.monitoring.alerting import log_critical_error
+from src.ui.keyboards.factory import CallbackDataBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -79,77 +80,155 @@ class ErrorHandler:
         return wrapper
     
     @staticmethod
-    async def handle_validation_error(update: Update, error_message: str) -> None:
+    async def handle_validation_error(
+        update: Update, 
+        context: ContextTypes.DEFAULT_TYPE, 
+        error_message: str,
+        keyboard_type: str = "back"
+    ) -> None:
         """
         Обработка ошибок валидации
         
         Args:
             update: Обновление от Telegram
+            context: Контекст обработчика
             error_message: Сообщение об ошибке
+            keyboard_type: Тип клавиатуры для возврата
         """
-        keyboard = [
-            [InlineKeyboardButton("🔄 Попробовать снова", callback_data="retry")],
-            [InlineKeyboardButton("❓ Помощь", callback_data="help")]
-        ]
-        
-        if update.callback_query:
-            await update.callback_query.edit_message_text(
-                text=f"❌ Ошибка валидации:\n\n{error_message}",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        elif update.message:
-            await update.message.reply_text(
-                text=f"❌ Ошибка валидации:\n\n{error_message}",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+        try:
+            keyboard = [
+                [InlineKeyboardButton("🔄 Попробовать снова", callback_data=CallbackDataBuilder.build("nav", "retry"))],
+                [InlineKeyboardButton("❓ Помощь", callback_data=CallbackDataBuilder.build("nav", "help"))]
+            ]
+            
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    text=f"❌ {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            elif update.message:
+                await update.message.reply_text(
+                    text=f"❌ {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            
+            logger.warning(f"Validation error handled: {error_message}")
+            
+        except Exception as e:
+            logger.error(f"Error in handle_validation_error: {e}")
     
     @staticmethod
-    async def handle_permission_error(update: Update) -> None:
+    async def handle_system_error(
+        update: Update, 
+        context: ContextTypes.DEFAULT_TYPE, 
+        error_message: str,
+        keyboard_type: str = "back"
+    ) -> None:
+        """
+        Обработка системных ошибок
+        
+        Args:
+            update: Обновление от Telegram
+            context: Контекст обработчика
+            error_message: Сообщение об ошибке
+            keyboard_type: Тип клавиатуры для возврата
+        """
+        try:
+            keyboard = [
+                [InlineKeyboardButton("🔄 Попробовать снова", callback_data=CallbackDataBuilder.build("nav", "retry"))],
+                [InlineKeyboardButton("❓ Помощь", callback_data=CallbackDataBuilder.build("nav", "help"))]
+            ]
+            
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    text=f"💥 Системная ошибка: {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            elif update.message:
+                await update.message.reply_text(
+                    text=f"💥 Системная ошибка: {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            
+            logger.error(f"System error handled: {error_message}")
+            
+        except Exception as e:
+            logger.error(f"Error in handle_system_error: {e}")
+    
+    @staticmethod
+    async def handle_network_error(
+        update: Update, 
+        context: ContextTypes.DEFAULT_TYPE, 
+        error_message: str,
+        keyboard_type: str = "back"
+    ) -> None:
+        """
+        Обработка сетевых ошибок
+        
+        Args:
+            update: Обновление от Telegram
+            context: Контекст обработчика
+            error_message: Сообщение об ошибке
+            keyboard_type: Тип клавиатуры для возврата
+        """
+        try:
+            keyboard = [
+                [InlineKeyboardButton("❓ Помощь", callback_data=CallbackDataBuilder.build("nav", "help"))]
+            ]
+            
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    text=f"🌐 Сетевая ошибка: {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            elif update.message:
+                await update.message.reply_text(
+                    text=f"🌐 Сетевая ошибка: {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            
+            logger.error(f"Network error handled: {error_message}")
+            
+        except Exception as e:
+            logger.error(f"Error in handle_network_error: {e}")
+    
+    @staticmethod
+    async def handle_permission_error(
+        update: Update, 
+        context: ContextTypes.DEFAULT_TYPE, 
+        error_message: str,
+        keyboard_type: str = "back"
+    ) -> None:
         """
         Обработка ошибок доступа
         
         Args:
             update: Обновление от Telegram
+            context: Контекст обработчика
+            error_message: Сообщение об ошибке
+            keyboard_type: Тип клавиатуры для возврата
         """
-        keyboard = [
-            [InlineKeyboardButton("❓ Помощь", callback_data="help")]
-        ]
-        
-        if update.callback_query:
-            await update.callback_query.edit_message_text(
-                text="❌ У вас нет прав для выполнения этого действия",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        elif update.message:
-            await update.message.reply_text(
-                text="❌ У вас нет прав для выполнения этого действия",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-    
-    @staticmethod
-    async def handle_not_found_error(update: Update, item_type: str) -> None:
-        """
-        Обработка ошибок "не найдено"
-        
-        Args:
-            update: Обновление от Telegram
-            item_type: Тип элемента (рецепт, список и т.д.)
-        """
-        keyboard = [
-            [InlineKeyboardButton("🔄 Попробовать снова", callback_data="retry")],
-            [InlineKeyboardButton("❓ Помощь", callback_data="help")]
-        ]
-        
-        if update.callback_query:
-            await update.callback_query.edit_message_text(
-                text=f"❌ {item_type} не найден",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        elif update.message:
-            await update.message.reply_text(
-                text=f"❌ {item_type} не найден",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+        try:
+            keyboard = [
+                [InlineKeyboardButton("🔄 Попробовать снова", callback_data=CallbackDataBuilder.build("nav", "retry"))],
+                [InlineKeyboardButton("❓ Помощь", callback_data=CallbackDataBuilder.build("nav", "help"))]
+            ]
+            
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    text=f"🔒 Ошибка доступа: {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            elif update.message:
+                await update.message.reply_text(
+                    text=f"🔒 Ошибка доступа: {error_message}",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            
+            logger.warning(f"Permission error handled: {error_message}")
+            
+        except Exception as e:
+            logger.error(f"Error in handle_permission_error: {e}")
 
 class ValidationError(Exception):
     """Ошибка валидации данных"""

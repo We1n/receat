@@ -29,12 +29,18 @@ from telegram.ext import Application, ContextTypes
 from src.config import Config
 from src.services.data_service import DataService
 from src.ui.handlers.callback_handler import CallbackHandler
-from src.ui.handlers.category_handlers import setup_category_handlers
-from src.ui.handlers.collaborative_handlers import setup_collaborative_handlers
-from src.ui.handlers.product_handlers import register_product_handlers
-from src.ui.handlers.nutrient_handlers import register_nutrient_handlers
-from src.ui.handlers.message_handlers import register_message_handlers
+# LEGACY: Удалены импорты старых обработчиков
+# from src.ui.handlers.collaborative_handlers import setup_collaborative_handlers
+# from src.ui.handlers.product_handlers import register_product_handlers
+# from src.ui.handlers.nutrient_handlers import register_nutrient_handlers
+from src.ui.handlers.text_message_handler import register_text_message_handlers
 from src.ui.handlers.command_handlers import CommandHandlers
+from src.ui.handlers.main_callback_router import callback_router, handle_callback
+from src.ui.handlers.navigation_handler import navigation_handler
+from src.ui.handlers.recipe_handlers import recipe_handler
+from src.ui.handlers.product_handlers_new import product_handler
+from src.ui.handlers.main_handler import main_handler
+from src.ui.handlers.conversation_handlers import create_recipe_conversation_handler
 from src.monitoring.alerting import send_critical_alert_admin
 # from src.monitoring.monitor import SystemMonitor # Temporarily disabled for debugging
 
@@ -59,13 +65,40 @@ async def setup_handlers(application: Application) -> None:
     callback_handler = CallbackHandler(data_service=data_service)
     command_handlers = CommandHandlers()
 
-    # Register all handlers
-    setup_category_handlers(application, data_service)
-    setup_collaborative_handlers(application, data_service, callback_handler)
-    register_product_handlers(application)
-    register_nutrient_handlers(application)
-    register_message_handlers(application)
+    # Регистрируем обработчик навигации в роутере
+    callback_router.register_handler("nav", navigation_handler)
+    logger.info("Обработчик навигации зарегистрирован")
+    
+    # Регистрируем обработчик главного меню в роутере
+    callback_router.register_handler("main", main_handler)
+    logger.info("Обработчик главного меню зарегистрирован")
+    
+    # Регистрируем обработчик рецептов в роутере
+    callback_router.register_handler("recipes", recipe_handler)
+    logger.info("Обработчик рецептов зарегистрирован")
+
+    # Регистрируем обработчик продуктов в роутере
+    callback_router.register_handler("products", product_handler)
+    logger.info("Обработчик продуктов зарегистрирован")
+
+    # LEGACY: Удалена регистрация старых обработчиков
+    # setup_collaborative_handlers(application, data_service, callback_handler)
+    # register_product_handlers(application)
+    # register_nutrient_handlers(application)
+    
+    # Регистрируем обработчики текстовых сообщений
+    register_text_message_handlers(application)
     command_handlers.register_handlers(application)
+    
+    # Регистрируем новый ConversationHandler для рецептов
+    recipe_conv_handler = create_recipe_conversation_handler()
+    application.add_handler(recipe_conv_handler)
+    logger.info("ConversationHandler для рецептов зарегистрирован")
+    
+    # Регистрируем единый обработчик колбэков
+    from telegram.ext import CallbackQueryHandler
+    application.add_handler(CallbackQueryHandler(handle_callback))
+    logger.info("Единый роутер колбэков зарегистрирован")
     
     logger.info("Обработчики настроены успешно")
 
