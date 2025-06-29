@@ -6,6 +6,7 @@
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from typing import Optional, List, Dict, Any
 import logging
+import hashlib
 
 logger = logging.getLogger("src.ui.keyboards.factory")
 logger.setLevel(logging.INFO)
@@ -15,7 +16,10 @@ if not logger.hasHandlers():
     logger.addHandler(handler)
 
 class CallbackDataBuilder:
-    """Строитель для создания стандартизированных callback_data"""
+    """Строитель для создания стандартизированных callback_data с проверкой ограничений"""
+    
+    MAX_LENGTH = 64  # Ограничение Telegram
+    MAX_PARAMS = 10  # Максимальное количество параметров
     
     @staticmethod
     def build(section: str, action: str, **params) -> str:
@@ -27,29 +31,97 @@ class CallbackDataBuilder:
             action: Действие (menu, list, view, add, search, back, main_menu)
             **params: Дополнительные параметры (id, page, etc.)
         """
+        if not section or not action:
+            raise ValueError("Section and action are required")
+        
         parts = [section, action]
         
+        # Добавляем параметры
+        param_count = 0
         for key, value in params.items():
-            if value is not None:
+            if value is not None and param_count < CallbackDataBuilder.MAX_PARAMS:
                 parts.append(f"{key}={value}")
+                param_count += 1
         
         callback_data = ":".join(parts)
         
         # Проверяем ограничение Telegram (64 байта)
-        if len(callback_data.encode('utf-8')) > 64:
+        if len(callback_data.encode('utf-8')) > CallbackDataBuilder.MAX_LENGTH:
             logger.warning(f"Callback data too long ({len(callback_data)} chars): {callback_data}")
-            # Обрезаем до безопасной длины
-            callback_data = callback_data[:60] + "..."
+            raise ValueError(
+                f"Callback data too long ({len(callback_data)} chars): {callback_data}. "
+                f"Use CallbackDataBuilder.build_with_id() for complex data."
+            )
         
         return callback_data
+    
+    @staticmethod
+    def build_with_id(section: str, action: str, data_id: str, **params) -> str:
+        """Строит callback_data с ID для сложных данных"""
+        if len(data_id) > 20:
+            raise ValueError(f"Data ID too long: {data_id}")
+        
+        return CallbackDataBuilder.build(section, action, id=data_id, **params)
+    
+    @staticmethod
+    def build_pagination(section: str, action: str, page: int, total_pages: int, **params) -> str:
+        """Строит callback_data для пагинации"""
+        return CallbackDataBuilder.build(section, action, page=str(page), total=str(total_pages), **params)
+    
+    @staticmethod
+    def build_search(section: str, action: str, query: str, **params) -> str:
+        """Строит callback_data для поиска"""
+        # Ограничиваем длину запроса
+        if len(query) > 20:
+            query = query[:20] + "..."
+        
+        return CallbackDataBuilder.build(section, action, q=query, **params)
+    
+    @staticmethod
+    def build_filter(section: str, action: str, filter_type: str, filter_value: str, **params) -> str:
+        """Строит callback_data для фильтров"""
+        return CallbackDataBuilder.build(section, action, filter=filter_type, value=filter_value, **params)
 
 class KeyboardFactory:
     """
-    Универсальная фабрика клавиатур для бота.
+    Универсальная фабрика клавиатур для бота с кэшированием.
     Используйте get(type, **kwargs) для получения нужной клавиатуры.
     """
+    
+    _cache: Dict[str, Any] = {}
+    
     @staticmethod
     def get(keyboard_type: str, **kwargs) -> Any:
+        """
+        Получает клавиатуру по типу с кэшированием
+        
+        Args:
+            keyboard_type: Тип клавиатуры
+            **kwargs: Параметры для создания клавиатуры
+        """
+        # Создаем ключ кэша на основе типа и параметров
+        cache_key = KeyboardFactory._create_cache_key(keyboard_type, kwargs)
+        
+        if cache_key not in KeyboardFactory._cache:
+            KeyboardFactory._cache[cache_key] = KeyboardFactory._create_keyboard(keyboard_type, **kwargs)
+            logger.debug(f"Создана новая клавиатура: {keyboard_type}")
+        
+        return KeyboardFactory._cache[cache_key]
+    
+    @staticmethod
+    def _create_cache_key(keyboard_type: str, params: Dict[str, Any]) -> str:
+        """Создает ключ кэша для клавиатуры"""
+        # Сортируем параметры для стабильного ключа
+        sorted_params = sorted(params.items())
+        param_str = str(sorted_params)
+        
+        # Создаем хеш для компактности
+        key_data = f"{keyboard_type}:{param_str}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+    
+    @staticmethod
+    def _create_keyboard(keyboard_type: str, **kwargs) -> Any:
+        """Создает клавиатуру конкретного типа"""
         if keyboard_type == "main_menu":
             return KeyboardFactory._main_menu()
         elif keyboard_type == "recipe_menu":
@@ -82,6 +154,20 @@ class KeyboardFactory:
             return KeyboardFactory._get_product_edit_field_keyboard(kwargs)
         else:
             raise ValueError(f"Неизвестный тип клавиатуры: {keyboard_type}")
+    
+    @staticmethod
+    def clear_cache() -> None:
+        """Очищает кэш клавиатур"""
+        KeyboardFactory._cache.clear()
+        logger.info("Кэш клавиатур очищен")
+    
+    @staticmethod
+    def get_cache_info() -> Dict[str, Any]:
+        """Возвращает информацию о кэше"""
+        return {
+            "cache_size": len(KeyboardFactory._cache),
+            "cached_types": list(set(key.split(':')[0] for key in KeyboardFactory._cache.keys()))
+        }
 
     @staticmethod
     def _main_menu() -> InlineKeyboardMarkup:
