@@ -3,51 +3,79 @@
 Управляет стеком навигации и обрабатывает навигационные действия
 """
 import logging
+import time
 from typing import Dict, Any, Optional, List
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.ui.keyboards import KeyboardFactory
 from src.ui.ui_service import ui_service
-from src.ui.messages_main import Messages as RawMessages
-
-# Правильная типизация Messages
-Messages: Dict[str, Any] = RawMessages
+from src.ui.messages.message_factory import MessageFactory
 
 logger = logging.getLogger(__name__)
 
-class NavigationStack:
-    """Стек навигации для отслеживания истории переходов"""
+class NavigationItem:
+    """Полная информация о состоянии экрана"""
+    def __init__(self, section: str, action: str, params: Dict[str, Any], 
+                 message_text: str, keyboard_type: str, return_point: Optional[str] = None):
+        self.section = section
+        self.action = action
+        self.params = params.copy()
+        self.message_text = message_text
+        self.keyboard_type = keyboard_type
+        self.return_point = return_point  # Для ConversationHandler
+        self.timestamp = time.time()
     
-    def __init__(self):
-        self.stack: List[Dict[str, Any]] = []
+    def to_dict(self) -> Dict[str, Any]:
+        """Преобразует в словарь для сохранения"""
+        return {
+            "section": self.section,
+            "action": self.action,
+            "params": self.params,
+            "message_text": self.message_text,
+            "keyboard_type": self.keyboard_type,
+            "return_point": self.return_point,
+            "timestamp": self.timestamp
+        }
     
-    def push(self, section: str, action: str, params: Optional[Dict[str, Any]] = None) -> None:
-        """Добавляет новый элемент в стек"""
-        if params is None:
-            params = {}
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'NavigationItem':
+        """Создает из словаря"""
+        return cls(
+            section=data["section"],
+            action=data["action"],
+            params=data.get("params", {}),
+            message_text=data["message_text"],
+            keyboard_type=data["keyboard_type"],
+            return_point=data.get("return_point")
+        )
+
+class EnhancedNavigationStack:
+    """Улучшенный стек навигации с полной информацией"""
+    
+    def __init__(self, max_size: int = 15):
+        self.stack: List[NavigationItem] = []
+        self.max_size = max_size
+    
+    def push_screen(self, item: NavigationItem) -> None:
+        """Добавляет экран в стек с полной информацией"""
+        self.stack.append(item)
         
-        self.stack.append({
-            "section": section,
-            "action": action,
-            "params": params.copy()
-        })
-        
-        # Ограничиваем размер стека (максимум 10 элементов)
-        if len(self.stack) > 10:
+        # Ограничиваем размер стека
+        if len(self.stack) > self.max_size:
             self.stack.pop(0)
         
-        logger.info(f"Добавлен в стек навигации: {section}:{action}")
+        logger.info(f"Добавлен в стек навигации: {item.section}:{item.action}")
     
-    def pop(self) -> Optional[Dict[str, Any]]:
+    def pop(self) -> Optional[NavigationItem]:
         """Извлекает последний элемент из стека"""
         if self.stack:
             item = self.stack.pop()
-            logger.info(f"Извлечен из стека: {item['section']}:{item['action']}")
+            logger.info(f"Извлечен из стека: {item.section}:{item.action}")
             return item
         return None
     
-    def peek(self) -> Optional[Dict[str, Any]]:
+    def peek(self) -> Optional[NavigationItem]:
         """Возвращает последний элемент без извлечения"""
         return self.stack[-1] if self.stack else None
     
@@ -56,13 +84,112 @@ class NavigationStack:
         self.stack.clear()
         logger.info("Стек навигации очищен")
     
+    def get_return_point(self) -> Optional[str]:
+        """Получает точку возврата для ConversationHandler"""
+        return self.stack[-1].return_point if self.stack else None
+    
     def get_stack_info(self) -> str:
         """Возвращает информацию о стеке для отладки"""
         if not self.stack:
             return "Стек пуст"
         
-        items = [f"{item['section']}:{item['action']}" for item in self.stack]
+        items = [f"{item.section}:{item.action}" for item in self.stack]
         return " -> ".join(items)
+    
+    def size(self) -> int:
+        """Возвращает размер стека"""
+        return len(self.stack)
+
+class NavigationManager:
+    """Менеджер навигации с полным управлением стеком"""
+    
+    @classmethod
+    async def navigate_to(cls, update: Update, context: ContextTypes.DEFAULT_TYPE,
+                         section: str, action: str, params: Dict[str, Any],
+                         message_text: str, keyboard_type: str) -> None:
+        """Переход на новый экран с автоматическим добавлением в стек"""
+        
+        # Сохраняем текущее состояние
+        cls._save_current_screen(context)
+        
+        # Создаем новый экран
+        new_screen = NavigationItem(section, action, params, message_text, keyboard_type)
+        if context.user_data is None:
+            context.user_data = {}
+        context.user_data['current_screen'] = new_screen
+        
+        # Показываем экран
+        await cls._show_screen(update, context, new_screen)
+    
+    @classmethod
+    async def go_back(cls, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Возврат на предыдущий экран"""
+        navigation_stack = cls._get_navigation_stack(context)
+        previous_screen = navigation_stack.pop()
+        
+        if previous_screen:
+            if context.user_data is None:
+                context.user_data = {}
+            context.user_data['current_screen'] = previous_screen
+            await cls._show_screen(update, context, previous_screen)
+        else:
+            await cls.go_to_main_menu(update, context)
+    
+    @classmethod
+    async def go_to_main_menu(cls, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Переход в главное меню"""
+        cls._clear_navigation_stack(context)
+        
+        await cls.navigate_to(
+            update, context,
+            "main", "menu", {},
+            MessageFactory.get_main_menu(),
+            "main_menu"
+        )
+    
+    @classmethod
+    def _save_current_screen(cls, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Сохраняет текущий экран в стек"""
+        if context.user_data is None:
+            context.user_data = {}
+        
+        current_screen = context.user_data.get('current_screen')
+        if current_screen:
+            navigation_stack = cls._get_navigation_stack(context)
+            navigation_stack.push_screen(current_screen)
+    
+    @classmethod
+    def _get_navigation_stack(cls, context: ContextTypes.DEFAULT_TYPE) -> EnhancedNavigationStack:
+        """Получает стек навигации"""
+        if context.user_data is None:
+            context.user_data = {}
+        
+        if 'navigation_stack' not in context.user_data:
+            context.user_data['navigation_stack'] = EnhancedNavigationStack()
+        return context.user_data['navigation_stack']
+    
+    @classmethod
+    def _clear_navigation_stack(cls, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Очищает стек навигации"""
+        if context.user_data is None:
+            context.user_data = {}
+        
+        navigation_stack = cls._get_navigation_stack(context)
+        navigation_stack.clear()
+        context.user_data.pop('current_screen', None)
+    
+    @classmethod
+    async def _show_screen(cls, update: Update, context: ContextTypes.DEFAULT_TYPE, 
+                          screen: NavigationItem) -> None:
+        """Показывает экран"""
+        keyboard = KeyboardFactory.get(screen.keyboard_type, **screen.params)
+        
+        await ui_service._send_or_edit_message(
+            update=update,
+            context=context,
+            text=screen.message_text,
+            reply_markup=keyboard
+        )
 
 class NavigationHandler:
     """Обработчик навигационных действий"""
@@ -70,13 +197,13 @@ class NavigationHandler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
     
-    def get_navigation_stack(self, context: ContextTypes.DEFAULT_TYPE) -> NavigationStack:
+    def get_navigation_stack(self, context: ContextTypes.DEFAULT_TYPE) -> EnhancedNavigationStack:
         """Получает или создает стек навигации для пользователя"""
         if context.user_data is None:
             context.user_data = {}
         
         if "navigation_stack" not in context.user_data:
-            context.user_data["navigation_stack"] = NavigationStack()
+            context.user_data["navigation_stack"] = EnhancedNavigationStack()
         
         return context.user_data["navigation_stack"]
     
@@ -107,27 +234,11 @@ class NavigationHandler:
     
     async def _handle_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Обработка кнопки 'Назад'"""
-        navigation_stack = self.get_navigation_stack(context)
-        
-        # Извлекаем предыдущий элемент из стека
-        previous_item = navigation_stack.pop()
-        
-        if previous_item:
-            # Вызываем предыдущее действие
-            await self._execute_navigation_item(update, context, previous_item)
-        else:
-            # Если стек пуст, возвращаемся в главное меню
-            await self._handle_main_menu(update, context)
+        await NavigationManager.go_back(update, context)
     
     async def _handle_main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Обработка кнопки 'Главное меню'"""
-        # Очищаем стек навигации
-        navigation_stack = self.get_navigation_stack(context)
-        navigation_stack.clear()
-        
-        # Показываем главное меню
-        await ui_service.show_main_menu(update, context)
-        self.logger.info("Переход в главное меню")
+        await NavigationManager.go_to_main_menu(update, context)
     
     async def _handle_error(self, update: Update, context: ContextTypes.DEFAULT_TYPE, params: Dict[str, Any]) -> None:
         """Обработка ошибок навигации"""
@@ -137,88 +248,8 @@ class NavigationHandler:
         await ui_service._send_or_edit_message(
             update=update,
             context=context,
-            text=f"❌ {error_message}",
+            text=MessageFactory.format_error(error_message),
             reply_markup=KeyboardFactory.get("navigation")
-        )
-    
-    async def _execute_navigation_item(self, update: Update, context: ContextTypes.DEFAULT_TYPE, item: Dict[str, Any]) -> None:
-        """Выполняет элемент навигации"""
-        section = item["section"]
-        action = item["action"]
-        params = item.get("params", {})
-        
-        self.logger.info(f"Выполнение навигационного элемента: {section}:{action}")
-        
-        # Импортируем обработчики по необходимости
-        if section == "main":
-            await self._handle_main_section(update, context, action, params)
-        elif section == "recipes":
-            await self._handle_recipes_section(update, context, action, params)
-        elif section == "products":
-            await self._handle_products_section(update, context, action, params)
-        elif section == "collaborative":
-            await self._handle_collaborative_section(update, context, action, params)
-        else:
-            self.logger.warning(f"Неизвестный раздел для навигации: {section}")
-            await self._handle_main_menu(update, context)
-    
-    async def _handle_main_section(self, update: Update, context: ContextTypes.DEFAULT_TYPE, action: str, params: Dict[str, Any]) -> None:
-        """Обработка раздела main"""
-        if action == "recipes":
-            recipes_text = Messages.get("RECIPES", {}).get("menu", "📚 Меню рецептов")
-            await ui_service._send_or_edit_message(
-                update=update,
-                context=context,
-                text=recipes_text,
-                reply_markup=KeyboardFactory.get("recipe_menu")
-            )
-        elif action == "products":
-            products_text = Messages.get("PRODUCTS", {}).get("menu", "🍏 Меню продуктов")
-            await ui_service._send_or_edit_message(
-                update=update,
-                context=context,
-                text=products_text,
-                reply_markup=KeyboardFactory.get("products_menu")
-            )
-        else:
-            await self._handle_main_menu(update, context)
-    
-    async def _handle_recipes_section(self, update: Update, context: ContextTypes.DEFAULT_TYPE, action: str, params: Dict[str, Any]) -> None:
-        """Обработка раздела recipes"""
-        # Здесь будет делегирование в RecipeHandler
-        # Пока что просто показываем меню рецептов
-        recipes_text = Messages.get("RECIPES", {}).get("menu", "📚 Меню рецептов")
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text=recipes_text,
-            reply_markup=KeyboardFactory.get("recipe_menu")
-        )
-    
-    async def _handle_products_section(self, update: Update, context: ContextTypes.DEFAULT_TYPE, action: str, params: Dict[str, Any]) -> None:
-        """Обработка раздела products"""
-        # Здесь будет делегирование в ProductHandler
-        # Пока что просто показываем меню продуктов
-        products_text = Messages.get("PRODUCTS", {}).get("menu", "🍏 Меню продуктов")
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text=products_text,
-            reply_markup=KeyboardFactory.get("products_menu")
-        )
-    
-    async def _handle_collaborative_section(self, update: Update, context: ContextTypes.DEFAULT_TYPE, action: str, params: Dict[str, Any]) -> None:
-        """Обработка раздела collaborative"""
-        # Здесь будет делегирование в CollaborativeHandler
-        # Пока что просто показываем меню коллабораций
-        collaborative_messages = Messages.get("COLLABORATIVE", {})
-        menu_text = collaborative_messages.get("menu", "🤝 Совместная работа") if isinstance(collaborative_messages, dict) else "🤝 Совместная работа"
-        
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text=menu_text,
-            reply_markup=KeyboardFactory.get("collaborative_menu")
         )
 
 # Глобальный экземпляр обработчика навигации
