@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 SECTION_MAIN = "main"
 SECTION_RECIPES = "recipes"
 SECTION_PRODUCTS = "products"
-SECTION_NUTRIENTS = "nutrients"
 SECTION_COLLABORATIVE = "collaborative"
 
 # Константы для действий
@@ -195,7 +194,6 @@ class NavigationMenus:
         items = [
             NavigationItem("Рецепты", "🍳", CallbackDataBuilder.build(SECTION_RECIPES, ACTION_MENU)),
             NavigationItem("Продукты", "🥗", CallbackDataBuilder.build(SECTION_PRODUCTS, ACTION_MENU)),
-            NavigationItem("Нутриенты", "📊", CallbackDataBuilder.build(SECTION_NUTRIENTS, ACTION_MENU)),
             NavigationItem("Совместная работа", "🤝", CallbackDataBuilder.build(SECTION_COLLABORATIVE, ACTION_MENU))
         ]
         return NavigationBuilder.build_menu(items, 2)
@@ -221,17 +219,6 @@ class NavigationMenus:
             [InlineKeyboardButton("➕ Добавить", callback_data=CallbackDataBuilder.build(SECTION_PRODUCTS, ACTION_ADD))],
             [InlineKeyboardButton("🧮 Калькулятор", callback_data=CallbackDataBuilder.build(SECTION_PRODUCTS, ACTION_CALCULATE))],
             [InlineKeyboardButton("📊 История", callback_data=CallbackDataBuilder.build(SECTION_PRODUCTS, ACTION_LIST))],
-            [InlineKeyboardButton("◀️ Назад", callback_data=CallbackDataBuilder.build("nav", "back"))]
-        ]
-        
-        return InlineKeyboardMarkup(keyboard)
-    
-    @staticmethod
-    def get_nutrients_menu() -> InlineKeyboardMarkup:
-        """Меню нутриентов"""
-        keyboard = [
-            [InlineKeyboardButton("🧮 Калькулятор", callback_data=CallbackDataBuilder.build(SECTION_NUTRIENTS, ACTION_CALCULATE))],
-            [InlineKeyboardButton("📊 Анализ рецепта", callback_data=CallbackDataBuilder.build(SECTION_NUTRIENTS, ACTION_ANALYZE))],
             [InlineKeyboardButton("◀️ Назад", callback_data=CallbackDataBuilder.build("nav", "back"))]
         ]
         

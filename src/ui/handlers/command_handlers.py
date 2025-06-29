@@ -45,12 +45,10 @@ class CommandHandlers:
             "/help - Показать эту справку\n"
             "/recipes - Меню рецептов\n"
             "/products - Меню продуктов\n"
-            "/nutrients - Калькулятор БЖУ\n"
             "/collaborative - Совместная работа\n\n"
             "💡 *Советы:*\n"
             "• Используйте меню для навигации\n"
             "• Добавляйте свои рецепты и продукты\n"
-            "• Анализируйте БЖУ ваших блюд\n"
             "• Создавайте категории для удобства\n\n"
             "❓ *Нужна помощь?*\n"
             "Обратитесь к администратору бота."
@@ -102,17 +100,6 @@ class CommandHandlers:
     
     @profiler.profile(save_to_file=True)
     @ErrorHandler.handle_errors
-    async def nutrients_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Обработчик команды /nutrients"""
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text="🧮 *Калькулятор БЖУ*\n\nОтправьте список ингредиентов для анализа."
-        )
-        logger.info("Запущен калькулятор БЖУ")
-    
-    @profiler.profile(save_to_file=True)
-    @ErrorHandler.handle_errors
     async def collaborative_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Обработчик команды /collaborative"""
         await ui_service._send_or_edit_message(
@@ -154,6 +141,5 @@ class CommandHandlers:
         application.add_handler(CommandHandler("menu", self.menu_command))
         application.add_handler(CommandHandler("recipes", self.recipes_command))
         application.add_handler(CommandHandler("products", self.products_command))
-        application.add_handler(CommandHandler("nutrients", self.nutrients_command))
         application.add_handler(CommandHandler("collaborative", self.collaborative_command))
         application.add_handler(CommandHandler("cancel", self.handle_cancel)) 

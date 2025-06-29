@@ -53,19 +53,11 @@ class IngredientDTO(BaseModel):
             raise ValueError(f"Недопустимая единица измерения. Разрешены: {', '.join(allowed_units)}")
         return v
 
-class NutrientsDTO(BaseModel):
-    """DTO для питательных веществ"""
-    calories: float = Field(ge=0, le=10000, description="Калории")
-    proteins: float = Field(ge=0, le=1000, description="Белки (г)")
-    fats: float = Field(ge=0, le=1000, description="Жиры (г)")
-    carbs: float = Field(ge=0, le=1000, description="Углеводы (г)")
-
 class RecipeDTO(BaseModel):
     """DTO для рецепта"""
     name: str = Field(..., description="Название рецепта")
     ingredients: List[IngredientDTO] = Field(..., description="Список ингредиентов")
     instructions: str = Field(..., description="Инструкции по приготовлению")
-    nutrients: NutrientsDTO = Field(..., description="Питательные вещества")
     cooking_time: int = Field(..., ge=1, le=1440, description="Время приготовления в минутах")
     difficulty: str = Field(..., description="Сложность")
     portions: int = Field(..., ge=1, le=50, description="Количество порций")
@@ -227,34 +219,6 @@ class ProductSearchDTO(BaseModel):
 
 class ProductCalculatorDTO(BaseModel):
     """DTO для калькулятора продуктов"""
-    amount: float = Field(..., gt=0, le=10000, description="Количество в граммах")
-    
-    @validator('amount')
-    def validate_amount(cls, v):
-        """Валидация количества"""
-        if v <= 0:
-            raise ValueError("Количество должно быть больше нуля")
-        if v > 10000:
-            raise ValueError("Количество не может превышать 10000 грамм")
-        return v
-
-# ============================================================================
-# СХЕМЫ ДЛЯ НУТРИЕНТОВ
-# ============================================================================
-
-class NutrientSearchDTO(BaseModel):
-    """DTO для поиска нутриентов"""
-    query: str = Field(..., min_length=1, max_length=100, description="Поисковый запрос")
-    
-    @validator('query')
-    def validate_query(cls, v):
-        """Валидация поискового запроса"""
-        if not v.strip():
-            raise ValueError("Поисковый запрос не может быть пустым")
-        return v.strip()
-
-class NutrientCalculatorDTO(BaseModel):
-    """DTO для калькулятора нутриентов"""
     amount: float = Field(..., gt=0, le=10000, description="Количество в граммах")
     
     @validator('amount')

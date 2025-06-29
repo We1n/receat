@@ -58,8 +58,6 @@ class KeyboardFactory:
             return KeyboardFactory._products_menu()
         elif keyboard_type == "collaborative_menu":
             return KeyboardFactory._collaborative_menu()
-        elif keyboard_type == "nutrient_menu":
-            return KeyboardFactory._nutrient_menu()
         elif keyboard_type == "dynamic_inline":
             return KeyboardFactory._dynamic_inline(kwargs.get("buttons", []))
         elif keyboard_type == "dynamic_reply":
@@ -68,6 +66,20 @@ class KeyboardFactory:
             return KeyboardFactory._back()
         elif keyboard_type == "navigation":
             return KeyboardFactory._navigation_buttons(kwargs.get("show_main_menu", True))
+        elif keyboard_type == "recipe_edit":
+            return KeyboardFactory._get_recipe_edit_keyboard(kwargs)
+        elif keyboard_type == "recipe_edit_confirm":
+            return KeyboardFactory._get_recipe_edit_confirm_keyboard(kwargs)
+        elif keyboard_type == "recipe_edit_field":
+            return KeyboardFactory._get_recipe_edit_field_keyboard(kwargs)
+        elif keyboard_type == "product_menu":
+            return KeyboardFactory._product_menu()
+        elif keyboard_type == "product_edit":
+            return KeyboardFactory._get_product_edit_keyboard(kwargs)
+        elif keyboard_type == "product_edit_confirm":
+            return KeyboardFactory._get_product_edit_confirm_keyboard(kwargs)
+        elif keyboard_type == "product_edit_field":
+            return KeyboardFactory._get_product_edit_field_keyboard(kwargs)
         else:
             raise ValueError(f"Неизвестный тип клавиатуры: {keyboard_type}")
 
@@ -90,18 +102,8 @@ class KeyboardFactory:
 
     @staticmethod
     def _recipe_menu() -> InlineKeyboardMarkup:
-        """Меню рецептов с навигационными кнопками"""
+        """Унифицированное меню рецептов с навигационными кнопками"""
         keyboard = [
-            [
-                InlineKeyboardButton(
-                    "🔍 Поиск", 
-                    callback_data=CallbackDataBuilder.build("recipes", "search")
-                ),
-                InlineKeyboardButton(
-                    "➕ Добавить", 
-                    callback_data=CallbackDataBuilder.build("recipes", "add")
-                )
-            ],
             [
                 InlineKeyboardButton(
                     "📋 Мои рецепты", 
@@ -110,8 +112,14 @@ class KeyboardFactory:
             ],
             [
                 InlineKeyboardButton(
-                    "🧮 Калькулятор БЖУ", 
-                    callback_data=CallbackDataBuilder.build("products", "calculator")
+                    "➕ Добавить рецепт", 
+                    callback_data=CallbackDataBuilder.build("recipes", "add")
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔍 Поиск рецептов", 
+                    callback_data=CallbackDataBuilder.build("recipes", "search")
                 )
             ]
         ]
@@ -133,12 +141,6 @@ class KeyboardFactory:
                 InlineKeyboardButton(
                     "➕ Добавить", 
                     callback_data=CallbackDataBuilder.build("products", "add")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🧮 Калькулятор БЖУ", 
-                    callback_data=CallbackDataBuilder.build("products", "calculator")
                 )
             ]
         ]
@@ -162,37 +164,6 @@ class KeyboardFactory:
                 InlineKeyboardButton(
                     "📋 Мои коллаборации", 
                     callback_data=CallbackDataBuilder.build("collaborative", "list")
-                )
-            ]
-        ]
-        
-        # Добавляем навигационные кнопки
-        keyboard.extend(KeyboardFactory._get_navigation_row())
-        
-        return InlineKeyboardMarkup(keyboard)
-
-    @staticmethod
-    def _nutrient_menu() -> InlineKeyboardMarkup:
-        """Меню нутриентов с навигационными кнопками"""
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "🔍 Поиск нутриентов", 
-                    callback_data=CallbackDataBuilder.build("nutrients", "search")
-                ),
-                InlineKeyboardButton(
-                    "📚 Справочник", 
-                    callback_data=CallbackDataBuilder.build("nutrients", "reference")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🧮 Калькулятор БЖУ", 
-                    callback_data=CallbackDataBuilder.build("nutrients", "calculator")
-                ),
-                InlineKeyboardButton(
-                    "📊 Анализ рациона", 
-                    callback_data=CallbackDataBuilder.build("nutrients", "analysis")
                 )
             ]
         ]
@@ -373,6 +344,258 @@ class KeyboardFactory:
         # Навигационные кнопки
         keyboard.extend(KeyboardFactory._get_navigation_row())
         
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def get_recipe_list_keyboard(recipes: List[Dict[str, Any]], current_page: int, total_pages: int) -> InlineKeyboardMarkup:
+        """
+        Унифицированная клавиатура для списка рецептов
+        
+        Args:
+            recipes: Список рецептов для отображения
+            current_page: Текущая страница
+            total_pages: Общее количество страниц
+        """
+        keyboard = []
+        
+        # Кнопки рецептов
+        for recipe in recipes:
+            recipe_id = recipe.get('id')
+            recipe_name = recipe.get('name', 'Без названия')
+            display_name = recipe_name[:30] + "..." if len(recipe_name) > 30 else recipe_name
+            
+            if recipe_id:
+                keyboard.append([
+                    InlineKeyboardButton(
+                        display_name, 
+                        callback_data=CallbackDataBuilder.build("recipes", "view", id=recipe_id)
+                    )
+                ])
+        
+        # Пагинация
+        if total_pages > 1:
+            pagination_row = []
+            
+            if current_page > 1:
+                pagination_row.append(
+                    InlineKeyboardButton(
+                        "◀️", 
+                        callback_data=CallbackDataBuilder.build("recipes", "list", page=current_page-1)
+                    )
+                )
+            
+            pagination_row.append(
+                InlineKeyboardButton(
+                    f"{current_page}/{total_pages}", 
+                    callback_data="no_action"
+                )
+            )
+            
+            if current_page < total_pages:
+                pagination_row.append(
+                    InlineKeyboardButton(
+                        "▶️", 
+                        callback_data=CallbackDataBuilder.build("recipes", "list", page=current_page+1)
+                    )
+                )
+            
+            keyboard.append(pagination_row)
+        
+        # Навигационные кнопки
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def get_recipe_view_keyboard(recipe_id: str) -> InlineKeyboardMarkup:
+        """
+        Унифицированная клавиатура для просмотра рецепта
+        
+        Args:
+            recipe_id: ID рецепта
+        """
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✏️ Редактировать", 
+                    callback_data=CallbackDataBuilder.build("recipes", "edit", id=recipe_id)
+                ),
+                InlineKeyboardButton(
+                    "🗑️ Удалить", 
+                    callback_data=CallbackDataBuilder.build("recipes", "delete_confirm", id=recipe_id)
+                )
+            ]
+        ]
+        
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def get_recipe_search_keyboard() -> InlineKeyboardMarkup:
+        """Унифицированная клавиатура для поиска рецептов"""
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "🔍 По названию", 
+                    callback_data=CallbackDataBuilder.build("recipes", "search_by_name")
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🥗 По ингредиентам", 
+                    callback_data=CallbackDataBuilder.build("recipes", "search_by_ingredients")
+                )
+            ]
+        ]
+        
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _get_recipe_edit_keyboard(params: dict) -> InlineKeyboardMarkup:
+        """Клавиатура для редактирования рецепта"""
+        recipe_id = params.get("id")
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "📝 Название", 
+                    callback_data=CallbackDataBuilder.build("recipes", "edit_name", id=recipe_id)
+                ),
+                InlineKeyboardButton(
+                    "🥗 Ингредиенты", 
+                    callback_data=CallbackDataBuilder.build("recipes", "edit_ingredients", id=recipe_id)
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📋 Инструкции", 
+                    callback_data=CallbackDataBuilder.build("recipes", "edit_instructions", id=recipe_id)
+                )
+            ]
+        ]
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _get_recipe_edit_confirm_keyboard(params: dict) -> InlineKeyboardMarkup:
+        """Клавиатура для подтверждения редактирования"""
+        recipe_id = params.get("id")
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✅ Сохранить", 
+                    callback_data=CallbackDataBuilder.build("recipes", "edit_confirm", id=recipe_id)
+                ),
+                InlineKeyboardButton(
+                    "❌ Отмена", 
+                    callback_data=CallbackDataBuilder.build("recipes", "view", id=recipe_id)
+                )
+            ]
+        ]
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _get_recipe_edit_field_keyboard(params: dict) -> InlineKeyboardMarkup:
+        """Клавиатура для редактирования конкретного поля"""
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✅ Готово", 
+                    callback_data=CallbackDataBuilder.build("recipes", "edit_confirm")
+                ),
+                InlineKeyboardButton(
+                    "❌ Отмена", 
+                    callback_data=CallbackDataBuilder.build("nav", "back")
+                )
+            ]
+        ]
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _product_menu() -> InlineKeyboardMarkup:
+        """Меню продуктов с навигационными кнопками"""
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "🔍 Поиск", 
+                    callback_data=CallbackDataBuilder.build("products", "search")
+                ),
+                InlineKeyboardButton(
+                    "➕ Добавить", 
+                    callback_data=CallbackDataBuilder.build("products", "add")
+                )
+            ]
+        ]
+        
+        # Добавляем навигационные кнопки
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _get_product_edit_keyboard(params: dict) -> InlineKeyboardMarkup:
+        """Клавиатура для редактирования продукта"""
+        product_id = params.get("id")
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "📝 Название", 
+                    callback_data=CallbackDataBuilder.build("products", "edit_name", id=product_id)
+                ),
+                InlineKeyboardButton(
+                    "🏷️ Категория", 
+                    callback_data=CallbackDataBuilder.build("products", "edit_category", id=product_id)
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🥗 Пищевая ценность", 
+                    callback_data=CallbackDataBuilder.build("products", "edit_nutrition", id=product_id)
+                )
+            ]
+        ]
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _get_product_edit_confirm_keyboard(params: dict) -> InlineKeyboardMarkup:
+        """Клавиатура для подтверждения редактирования продукта"""
+        product_id = params.get("id")
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✅ Сохранить", 
+                    callback_data=CallbackDataBuilder.build("products", "edit_confirm", id=product_id)
+                ),
+                InlineKeyboardButton(
+                    "❌ Отмена", 
+                    callback_data=CallbackDataBuilder.build("products", "view", id=product_id)
+                )
+            ]
+        ]
+        keyboard.extend(KeyboardFactory._get_navigation_row())
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def _get_product_edit_field_keyboard(params: dict) -> InlineKeyboardMarkup:
+        """Клавиатура для редактирования конкретного поля продукта"""
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✅ Готово", 
+                    callback_data=CallbackDataBuilder.build("products", "edit_confirm")
+                ),
+                InlineKeyboardButton(
+                    "❌ Отмена", 
+                    callback_data=CallbackDataBuilder.build("nav", "back")
+                )
+            ]
+        ]
+        keyboard.extend(KeyboardFactory._get_navigation_row())
         return InlineKeyboardMarkup(keyboard)
 
 # Пример использования:

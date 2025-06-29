@@ -158,8 +158,6 @@ class NavigationHandler:
             await self._handle_products_section(update, context, action, params)
         elif section == "collaborative":
             await self._handle_collaborative_section(update, context, action, params)
-        elif section == "nutrients":
-            await self._handle_nutrients_section(update, context, action, params)
         else:
             self.logger.warning(f"Неизвестный раздел для навигации: {section}")
             await self._handle_main_menu(update, context)
@@ -221,20 +219,6 @@ class NavigationHandler:
             context=context,
             text=menu_text,
             reply_markup=KeyboardFactory.get("collaborative_menu")
-        )
-    
-    async def _handle_nutrients_section(self, update: Update, context: ContextTypes.DEFAULT_TYPE, action: str, params: Dict[str, Any]) -> None:
-        """Обработка раздела nutrients"""
-        # Здесь будет делегирование в NutrientHandler
-        # Пока что просто показываем меню нутриентов
-        nutrient_messages = Messages.get("NUTRIENTS", {})
-        menu_text = nutrient_messages.get("menu", "🧬 Нутриенты") if isinstance(nutrient_messages, dict) else "🧬 Нутриенты"
-        
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text=menu_text,
-            reply_markup=KeyboardFactory.get("nutrient_menu")
         )
 
 # Глобальный экземпляр обработчика навигации

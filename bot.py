@@ -28,7 +28,6 @@ from telegram.ext import Application, ContextTypes
 
 from src.config import Config
 from src.services.data_service import DataService
-from src.ui.handlers.callback_handler import CallbackHandler
 # LEGACY: Удалены импорты старых обработчиков
 # from src.ui.handlers.collaborative_handlers import setup_collaborative_handlers
 # from src.ui.handlers.product_handlers import register_product_handlers
@@ -38,7 +37,7 @@ from src.ui.handlers.command_handlers import CommandHandlers
 from src.ui.handlers.main_callback_router import callback_router, handle_callback
 from src.ui.handlers.navigation_handler import navigation_handler
 from src.ui.handlers.recipe_handlers import recipe_handler
-from src.ui.handlers.product_handlers_new import product_handler
+from src.ui.handlers.product_handlers import product_handler
 from src.ui.handlers.main_handler import main_handler
 from src.ui.handlers.conversation_handlers import create_recipe_conversation_handler
 from src.monitoring.alerting import send_critical_alert_admin
@@ -62,7 +61,6 @@ async def setup_handlers(application: Application) -> None:
     
     # Initialize services and handlers
     data_service = DataService()
-    callback_handler = CallbackHandler(data_service=data_service)
     command_handlers = CommandHandlers()
 
     # Регистрируем обработчик навигации в роутере

@@ -29,7 +29,7 @@ class MainHandler:
         Args:
             update: Объект Update от Telegram
             context: Контекст выполнения
-            action: Действие (menu, recipes, products, collaborative, nutrients)
+            action: Действие (menu, recipes, products, collaborative)
             params: Параметры действия
         """
         self.logger.info(f"Обработка действия главного меню: {action}")
@@ -42,8 +42,6 @@ class MainHandler:
             await self._show_products_menu(update, context)
         elif action == "collaborative":
             await self._show_collaborative_menu(update, context)
-        elif action == "nutrients":
-            await self._show_nutrients_menu(update, context)
         else:
             self.logger.warning(f"Неизвестное действие главного меню: {action}")
             await self._show_main_menu(update, context)
@@ -85,17 +83,6 @@ class MainHandler:
             reply_markup=KeyboardFactory.get("collaborative_menu")
         )
         self.logger.info("Переход в меню совместной работы")
-    
-    async def _show_nutrients_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Показывает меню нутриентов"""
-        nutrients_text = Messages.get("NUTRIENTS", {}).get("menu", "🧬 Нутриенты")
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text=nutrients_text,
-            reply_markup=KeyboardFactory.get("nutrient_menu")
-        )
-        self.logger.info("Переход в меню нутриентов")
 
 # Глобальный экземпляр обработчика главного меню
 main_handler = MainHandler() 

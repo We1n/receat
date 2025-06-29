@@ -129,8 +129,6 @@ src/
 
 - 📖 **[UI_REFACTORING.md](docs/UI_REFACTORING.md)** - Детальное описание рефакторинга UI/UX
 - 🏗️ **[structure_full.md](docs/structure_full.md)** - Полная структура проекта
-- ✅ **[validation_system_guide.md](docs/validation_system_guide.md)** - Руководство по валидации
-- ❓ **[faq.md](docs/faq.md)** - Часто задаваемые вопросы
 - 🧮 **[nutrient_calculator.md](docs/nutrient_calculator.md)** - Калькулятор БЖУ
 
 ### 🗺️ Дорожная карта
@@ -163,7 +161,7 @@ src/
 
 ### 📞 Контакты
 
-**Автор:** We1n
+**Автор:** We1n | @Karpovtatts
 
 *   **Telegram:** [@Karpovtatts](https://t.me/Karpovtatts)
 *   **GitHub:** [github.com/We1n](https://github.com/We1n)

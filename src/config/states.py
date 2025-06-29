@@ -7,7 +7,6 @@ class States(Enum):
     """Состояния бота"""
     MAIN_MENU = "main_menu"
     RECIPES_MENU = "recipes_menu"
-    NUTRIENT_MENU = "nutrient_menu"
     PROFILE_MENU = "profile_menu"
     PRODUCTS_MENU = "products_menu"
     COLLABORATIVE_MENU = auto()
@@ -23,10 +22,6 @@ class States(Enum):
     PRODUCT_SEARCH = "product_search"
     PRODUCT_ADD = "product_add"
     PRODUCT_EDIT = "product_edit"
-    
-    # Состояния для работы с нутриентами
-    NUTRIENT_CALC = "nutrient_calc"
-    NUTRIENT_ANALYSIS = "nutrient_analysis"
     
     # Состояния для работы с профилем
     PROFILE_EDIT = "profile_edit"
@@ -45,6 +40,6 @@ class States(Enum):
 WAITING_PRICE = 1001
 
 # Состояния для ConversationHandler и других сценариев
-RECIPE_ADD, PRODUCT_ADD, PRODUCT_SEARCH, RECIPE_SEARCH, NUTRIENT_CALCULATOR = range(5)
+RECIPE_ADD, PRODUCT_ADD, PRODUCT_SEARCH, RECIPE_SEARCH = range(4)
 
 # Можно добавить другие состояния, если нужно 

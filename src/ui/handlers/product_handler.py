@@ -46,8 +46,6 @@ class ProductHandler:
             await self._start_product_add(update, context)
         elif action == "search":
             await self._start_product_search(update, context)
-        elif action == "calculator":
-            await self._start_calculator(update, context)
         elif action == "delete_confirm":
             await self._confirm_product_delete(update, context, params)
         elif action == "delete":
@@ -213,24 +211,6 @@ class ProductHandler:
         context.user_data['state'] = 'product_search'
         
         self.logger.info("Начат поиск продуктов")
-    
-    async def _start_calculator(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Начинает калькулятор БЖУ"""
-        calculator_text = Messages.get("PRODUCTS", {}).get("calculator", "🧮 Калькулятор БЖУ")
-        
-        await ui_service._send_or_edit_message(
-            update=update,
-            context=context,
-            text=f"{calculator_text}\n\nВведите продукты и их количество:\n\n**Формат:**\n[название продукта] [количество]г\n\n💡 **Пример:**\nяблоко 150г\nкуриная грудка 200г\nовсянка 50г",
-            reply_markup=KeyboardFactory.get("navigation")
-        )
-        
-        # Устанавливаем состояние калькулятора
-        if context.user_data is None:
-            context.user_data = {}
-        context.user_data['state'] = 'product_calculator'
-        
-        self.logger.info("Начат калькулятор БЖУ")
     
     async def _confirm_product_delete(self, update: Update, context: ContextTypes.DEFAULT_TYPE, params: Dict[str, Any]) -> None:
         """Запрашивает подтверждение удаления продукта"""

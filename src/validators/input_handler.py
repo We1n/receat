@@ -15,7 +15,6 @@ from pydantic import ValidationError, BaseModel
 from .schemas import (
     RecipeDTO, UserProfileDTO, UserMealDTO,
     SearchQueryDTO, FilterDTO, ProductDTO, ProductSearchDTO, ProductCalculatorDTO,
-    NutrientSearchDTO, NutrientCalculatorDTO,
     ValidationErrorResponse, create_error_response
 )
 
@@ -60,8 +59,6 @@ class InputHandler:
             'product': ProductDTO,
             'product_search': ProductSearchDTO,
             'product_calculator': ProductCalculatorDTO,
-            'nutrient_search': NutrientSearchDTO,
-            'nutrient_calculator': NutrientCalculatorDTO,
         }
         
         # Маппинг парсеров для разных типов данных
@@ -70,8 +67,6 @@ class InputHandler:
             "product_edit": self.parse_product_input,
             "product_search": self.parse_product_search_input,
             "product_calculator": self.parse_product_calculator_input,
-            "nutrient_search": self.parse_nutrient_search_input,
-            "nutrient_calculator": self.parse_nutrient_calculator_input,
         }
     
     def validate_input(
@@ -266,46 +261,6 @@ class InputHandler:
             return {"amount": 0}
         except Exception as e:
             logger.error(f"Ошибка парсинга данных калькулятора: {e}")
-            return {"amount": 0}
-    
-    def parse_nutrient_search_input(self, text: str) -> Dict[str, Any]:
-        """
-        Парсинг поискового запроса нутриентов
-        
-        Args:
-            text: Поисковый запрос
-            
-        Returns:
-            Словарь с данными поиска
-        """
-        try:
-            return {
-                "query": text.strip()
-            }
-        except Exception as e:
-            logger.error(f"Ошибка парсинга поискового запроса нутриентов: {e}")
-            return {"query": ""}
-    
-    def parse_nutrient_calculator_input(self, text: str) -> Dict[str, Any]:
-        """
-        Парсинг ввода для калькулятора нутриентов
-        
-        Args:
-            text: Количество в граммах
-            
-        Returns:
-            Словарь с данными калькулятора
-        """
-        try:
-            amount = float(text.strip())
-            return {
-                "amount": amount
-            }
-        except ValueError:
-            logger.error(f"Некорректное количество в калькуляторе нутриентов: {text}")
-            return {"amount": 0}
-        except Exception as e:
-            logger.error(f"Ошибка парсинга данных калькулятора нутриентов: {e}")
             return {"amount": 0}
     
     def sanitize_text(self, text: str) -> str:
