@@ -37,7 +37,7 @@ from src.ui.handlers.command_handlers import CommandHandlers
 from src.ui.handlers.main_callback_router import callback_router, handle_callback
 from src.ui.handlers.navigation_handler import navigation_handler
 from src.ui.handlers.recipe_handlers import recipe_handler
-from src.ui.handlers.product_handlers import product_handler
+from src.ui.handlers.product_handler import product_handler
 from src.ui.handlers.main_handler import main_handler
 from src.ui.handlers.conversation_handlers import create_recipe_conversation_handler
 from src.monitoring.alerting import send_critical_alert_admin
