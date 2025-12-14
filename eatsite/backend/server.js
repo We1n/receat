@@ -114,7 +114,10 @@ function broadcastToWorkspace(workspaceId, message) {
 
 // Middleware для проверки доступа
 function requireAccess(req, res, next) {
-  const workspaceId = req.params.id || req.params.workspaceId || req.headers['x-workspace-id'] || req.query.workspace_id;
+  // Для маршрутов типа /products/:id или /recipes/:id, 
+  // req.params.id - это ID продукта/рецепта, а не workspace_id
+  // Поэтому workspace_id должен быть только в заголовках или query
+  const workspaceId = req.params.workspaceId || req.headers['x-workspace-id'] || req.query.workspace_id;
   const clientToken = req.headers['x-client-token'] || req.query.client_token;
 
   if (!workspaceId || !clientToken) {
@@ -213,8 +216,9 @@ app.post('/products', requireAccess, (req, res) => {
   const product = {
     id: uuidv4(),
     name: req.body.name,
-    category: req.body.category || 'other',
+    category: req.body.category || 'Прочее',
     in_stock: req.body.in_stock ?? false,
+    wishlist: req.body.wishlist ?? false,
     quantity: req.body.quantity || null,
     unit: req.body.unit || null
   };
@@ -353,6 +357,108 @@ app.get('/export/json', requireAccess, (req, res) => {
 // Categories (публичный endpoint)
 app.get('/categories', (req, res) => {
   res.json(PRODUCT_CATEGORIES);
+});
+
+// Базовая корзина продуктов
+const BASE_BASKET = [
+  // Овощи
+  { name: 'Картофель', category: 'Овощи', in_stock: false },
+  { name: 'Морковь', category: 'Овощи', in_stock: false },
+  { name: 'Лук репчатый', category: 'Овощи', in_stock: false },
+  { name: 'Чеснок', category: 'Овощи', in_stock: false },
+  { name: 'Помидоры', category: 'Овощи', in_stock: false },
+  { name: 'Огурцы', category: 'Овощи', in_stock: false },
+  { name: 'Капуста белокочанная', category: 'Овощи', in_stock: false },
+  { name: 'Перец болгарский', category: 'Овощи', in_stock: false },
+  
+  // Фрукты
+  { name: 'Яблоки', category: 'Фрукты', in_stock: false },
+  { name: 'Бананы', category: 'Фрукты', in_stock: false },
+  { name: 'Апельсины', category: 'Фрукты', in_stock: false },
+  
+  // Молочные продукты
+  { name: 'Молоко', category: 'Молочные продукты', in_stock: false },
+  { name: 'Сметана', category: 'Молочные продукты', in_stock: false },
+  { name: 'Творог', category: 'Молочные продукты', in_stock: false },
+  { name: 'Сыр', category: 'Молочные продукты', in_stock: false },
+  { name: 'Яйца куриные', category: 'Яйца', in_stock: false },
+  
+  // Мясо
+  { name: 'Куриная грудка', category: 'Мясо', in_stock: false },
+  { name: 'Фарш мясной', category: 'Мясо', in_stock: false },
+  
+  // Крупы
+  { name: 'Рис', category: 'Крупы', in_stock: false },
+  { name: 'Гречка', category: 'Крупы', in_stock: false },
+  { name: 'Овсяные хлопья', category: 'Крупы', in_stock: false },
+  { name: 'Макароны из твёрдых сортов', category: 'Крупы', in_stock: false },
+  
+  // Хлеб
+  { name: 'Хлеб ржаной или цельнозерновой', category: 'Хлеб', in_stock: false },
+  
+  // Специи
+  { name: 'Соль', category: 'Специи', in_stock: false },
+  { name: 'Перец черный', category: 'Специи', in_stock: false },
+  { name: 'Сахар', category: 'Специи', in_stock: false },
+  
+  // Жиры и масла
+  { name: 'Растительное масло', category: 'Жиры и масла', in_stock: false },
+  { name: 'Масло сливочное', category: 'Жиры и масла', in_stock: false },
+  
+  // Напитки
+  { name: 'Вода питьевая', category: 'Напитки', in_stock: false },
+  { name: 'Чай', category: 'Напитки', in_stock: false },
+  
+  // Соусы
+  { name: 'Майонез', category: 'Соусы', in_stock: false },
+  { name: 'Кетчуп', category: 'Соусы', in_stock: false },
+  
+  // Прочее
+  { name: 'Томатная паста', category: 'Прочее', in_stock: false }
+];
+
+// Инициализация базовой корзины в workspace
+app.post('/workspace/:id/init-basket', requireAccess, (req, res) => {
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[req.workspaceId];
+
+  if (!workspace) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
+  // Проверяем, есть ли уже продукты в workspace
+  const existingProducts = workspace.products || [];
+  const existingNames = new Set(existingProducts.map(p => p.name.toLowerCase()));
+
+  // Добавляем только те продукты, которых еще нет
+  const newProducts = BASE_BASKET
+    .filter(product => !existingNames.has(product.name.toLowerCase()))
+    .map(product => ({
+      id: uuidv4(),
+      name: product.name,
+      category: product.category,
+      in_stock: product.in_stock,
+      quantity: null,
+      unit: null
+    }));
+
+  workspace.products = [...existingProducts, ...newProducts];
+  saveWorkspaces(workspaces);
+
+  // Отправляем обновления через WebSocket
+  newProducts.forEach(product => {
+    broadcastToWorkspace(req.workspaceId, {
+      type: 'product_created',
+      data: product
+    });
+  });
+
+  res.json({
+    success: true,
+    added: newProducts.length,
+    total: workspace.products.length,
+    products: newProducts
+  });
 });
 
 // Health check

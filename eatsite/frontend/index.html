@@ -2,8 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Shared Pantry - учёт продуктов для двух устройств">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Pantry">
   <title>Shared Pantry</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/styles.css">
@@ -18,30 +22,60 @@
       <button id="join-btn">Присоединиться</button>
     </div>
 
-    <!-- Out of Stock (главный экран) -->
-    <div id="out-of-stock" class="screen hidden">
-      <header>
-        <h1>Нужно купить</h1>
-        <div class="header-actions">
-          <button id="add-product-btn">+ Добавить продукт</button>
-          <button id="toggle-view-btn">Показать в наличии</button>
-          <button id="nav-recipes-btn">Рецепты</button>
-        </div>
+    <!-- Menu Screen (главный экран с табами) -->
+    <div id="menu-screen" class="screen hidden">
+      <header class="menu-header">
+        <h1>Меню</h1>
       </header>
-      <div id="products-out-list"></div>
-    </div>
+      
+      <!-- Tab Navigation -->
+      <div class="tab-navigation" role="tablist">
+        <button class="tab-btn active" data-tab="home" role="tab" aria-selected="true" aria-controls="tab-panel-home">
+          <span class="tab-icon">🏠</span>
+          <span class="tab-label">Дома</span>
+        </button>
+        <button class="tab-btn" data-tab="need" role="tab" aria-selected="false" aria-controls="tab-panel-need">
+          <span class="tab-icon">🛒</span>
+          <span class="tab-label">Нужно</span>
+        </button>
+        <button class="tab-btn" data-tab="base" role="tab" aria-selected="false" aria-controls="tab-panel-base">
+          <span class="tab-icon">📦</span>
+          <span class="tab-label">Базовая</span>
+        </button>
+        <button class="tab-btn" data-tab="wishlist" role="tab" aria-selected="false" aria-controls="tab-panel-wishlist">
+          <span class="tab-icon">⭐</span>
+          <span class="tab-label">Хочухи</span>
+        </button>
+      </div>
 
-    <!-- In Stock -->
-    <div id="in-stock" class="screen hidden">
-      <header>
-        <h1>В наличии</h1>
-        <div class="header-actions">
-          <button id="add-product-btn-2">+ Добавить продукт</button>
-          <button id="toggle-view-btn-2">Показать нужно купить</button>
-          <button id="nav-recipes-btn-2">Рецепты</button>
+      <!-- Tab Panels -->
+      <div class="tab-panels">
+        <!-- Дома (In Stock) -->
+        <div id="tab-panel-home" class="tab-panel active" role="tabpanel" aria-labelledby="tab-home">
+          <div id="products-in-list"></div>
         </div>
-      </header>
-      <div id="products-in-list"></div>
+
+        <!-- Нужно (Out of Stock) -->
+        <div id="tab-panel-need" class="tab-panel" role="tabpanel" aria-labelledby="tab-need">
+          <div id="products-out-list"></div>
+        </div>
+
+        <!-- Базовая корзина -->
+        <div id="tab-panel-base" class="tab-panel" role="tabpanel" aria-labelledby="tab-base">
+          <div class="base-basket-content">
+            <div class="info-card">
+              <h2>Базовая корзина</h2>
+              <p>Добавьте стандартный набор продуктов для начала работы</p>
+              <button id="init-basket-btn" class="init-basket-btn">🛒 Добавить базовую корзину</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Хочухи (Wishlist) -->
+        <div id="tab-panel-wishlist" class="tab-panel" role="tabpanel" aria-labelledby="tab-wishlist">
+          <div id="wishlist-list"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Product Add/Edit -->
@@ -65,12 +99,26 @@
           <input type="checkbox" id="edit-in-stock"> В наличии
         </label>
         <label>
+          <input type="checkbox" id="edit-wishlist"> ⭐ В хочухи
+        </label>
+        <label>
           Количество:
-          <input type="number" id="edit-quantity" step="0.1">
+          <input type="number" id="edit-quantity" step="0.1" min="0" placeholder="1, 0.5, 2.5...">
+          <small class="hint">Для штук (шт) - только целые числа</small>
         </label>
         <label>
           Единица измерения:
-          <input type="text" id="edit-unit" placeholder="кг, л, шт...">
+          <input type="text" id="edit-unit" placeholder="кг, л, шт, банки..." list="unit-suggestions">
+          <datalist id="unit-suggestions">
+            <option value="кг">
+            <option value="г">
+            <option value="л">
+            <option value="мл">
+            <option value="шт">
+            <option value="банки">
+            <option value="пачки">
+            <option value="упаковки">
+          </datalist>
         </label>
         <div class="form-actions">
           <button type="submit">Сохранить</button>
@@ -85,7 +133,6 @@
         <h1>Рецепты</h1>
         <div class="header-actions">
           <button id="add-recipe-btn">+ Добавить рецепт</button>
-          <button id="nav-products-btn">Продукты</button>
         </div>
       </header>
       <div id="recipes-list"></div>
@@ -116,6 +163,30 @@
         </div>
       </form>
     </div>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav" class="bottom-nav" role="navigation" aria-label="Основная навигация">
+      <button class="nav-item" id="nav-products-tab" aria-label="Продукты" aria-current="page">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span class="nav-label">Продукты</span>
+      </button>
+      <button class="nav-item nav-item-add" id="add-product-btn" aria-label="Добавить продукт">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <button class="nav-item" id="nav-recipes-tab" aria-label="Рецепты">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span class="nav-label">Рецепты</span>
+      </button>
+    </nav>
   </div>
 
   <script type="module" src="/main.js"></script>

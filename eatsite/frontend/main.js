@@ -22,13 +22,14 @@ let screens = {};
 let productCategories = [];
 let editingProductId = null;
 let editingRecipeId = null;
+let currentTab = 'need'; // 'home', 'need', 'base', 'wishlist'
+let wishlistProducts = [];
 
 // Инициализация DOM элементов
 function initDOMElements() {
   screens = {
     publicLanding: document.getElementById('public-landing'),
-    outOfStock: document.getElementById('out-of-stock'),
-    inStock: document.getElementById('in-stock'),
+    menuScreen: document.getElementById('menu-screen'),
     productEdit: document.getElementById('product-edit'),
     recipes: document.getElementById('recipes'),
     recipeEdit: document.getElementById('recipe-edit')
@@ -40,6 +41,16 @@ function init() {
   // Инициализируем DOM элементы
   initDOMElements();
   
+  // Устанавливаем стили для горизонтальной навигации
+  const bottomNav = document.getElementById('bottom-nav');
+  if (bottomNav) {
+    bottomNav.style.display = 'flex';
+    bottomNav.style.flexDirection = 'row';
+    bottomNav.style.flexWrap = 'nowrap';
+    bottomNav.style.justifyContent = 'space-around';
+    bottomNav.style.alignItems = 'center';
+  }
+  
   // Проверяем сохранённый токен
   clientToken = localStorage.getItem('client_token');
   workspaceId = localStorage.getItem('workspace_id');
@@ -48,6 +59,10 @@ function init() {
     connectToWorkspace(workspaceId, clientToken);
   } else {
     showScreen('publicLanding');
+    // Hide bottom nav on public landing
+    if (bottomNav) {
+      bottomNav.classList.add('hidden');
+    }
   }
 
   setupEventListeners();
@@ -63,50 +78,49 @@ function setupEventListeners() {
     }
   });
 
-  // Toggle views
-  document.getElementById('toggle-view-btn')?.addEventListener('click', () => {
-    showScreen('inStock');
+  // Tab navigation
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      switchTab(tab);
+    });
   });
 
-  document.getElementById('toggle-view-btn-2')?.addEventListener('click', () => {
-    showScreen('outOfStock');
-  });
-
-  // Add product buttons
+  // Add product button
   document.getElementById('add-product-btn')?.addEventListener('click', () => {
     openProductForm();
   });
 
-  document.getElementById('add-product-btn-2')?.addEventListener('click', () => {
-    openProductForm();
+  // Init basket button
+  document.getElementById('init-basket-btn')?.addEventListener('click', async () => {
+    await initBasket();
   });
 
   // Close edit form
   document.getElementById('close-edit-btn')?.addEventListener('click', () => {
-    showScreen('outOfStock');
+    showScreen('menuScreen');
+    updateBottomNav('products');
   });
 
   // Delete product
   document.getElementById('delete-product-btn')?.addEventListener('click', async () => {
     if (editingProductId && confirm('Удалить продукт?')) {
       await deleteProduct(editingProductId);
-      showScreen('outOfStock');
+      showScreen('menuScreen');
+      updateBottomNav('products');
     }
   });
 
-  // Navigation
-  document.getElementById('nav-recipes-btn')?.addEventListener('click', () => {
-    showScreen('recipes');
-    renderRecipes();
+  // Bottom Navigation
+  document.getElementById('nav-products-tab')?.addEventListener('click', () => {
+    showScreen('menuScreen');
+    updateBottomNav('products');
   });
 
-  document.getElementById('nav-recipes-btn-2')?.addEventListener('click', () => {
+  document.getElementById('nav-recipes-tab')?.addEventListener('click', () => {
     showScreen('recipes');
     renderRecipes();
-  });
-
-  document.getElementById('nav-products-btn')?.addEventListener('click', () => {
-    showScreen('outOfStock');
+    updateBottomNav('recipes');
   });
 
   // Recipes
@@ -116,12 +130,14 @@ function setupEventListeners() {
 
   document.getElementById('close-recipe-btn')?.addEventListener('click', () => {
     showScreen('recipes');
+    updateBottomNav('recipes');
   });
 
   document.getElementById('delete-recipe-btn')?.addEventListener('click', async () => {
     if (editingRecipeId && confirm('Удалить рецепт?')) {
       await deleteRecipe(editingRecipeId);
       showScreen('recipes');
+      updateBottomNav('recipes');
     }
   });
 
@@ -140,6 +156,7 @@ function setupEventListeners() {
       await createRecipe({ name, product_ids: productIds, notes: notes || null });
     }
     showScreen('recipes');
+    updateBottomNav('recipes');
   });
 }
 
@@ -222,9 +239,13 @@ async function loadInitialState() {
       const data = await response.json();
       currentProducts = data.products || [];
       currentRecipes = data.recipes || [];
+      wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
       renderProducts();
       renderRecipes();
-      showScreen('outOfStock');
+      renderWishlist();
+      showScreen('menuScreen');
+      switchTab('need');
+      updateBottomNav('products');
     } else {
       throw new Error('Failed to load state');
     }
@@ -247,7 +268,9 @@ function handleWebSocketMessage(message) {
     case 'state':
       currentProducts = message.data.products || [];
       currentRecipes = message.data.recipes || [];
+      wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
       renderProducts();
+      renderWishlist();
       break;
     case 'product_created':
     case 'product_updated':
@@ -257,11 +280,15 @@ function handleWebSocketMessage(message) {
       } else {
         currentProducts.push(message.data);
       }
+      wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
       renderProducts();
+      renderWishlist();
       break;
     case 'product_deleted':
       currentProducts = currentProducts.filter(p => p.id !== message.data.id);
+      wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
       renderProducts();
+      renderWishlist();
       break;
     case 'recipe_created':
     case 'recipe_updated':
@@ -304,9 +331,106 @@ function renderProductList(containerId, products) {
         <span class="product-category">${product.category}</span>
         ${product.quantity ? `<span class="product-quantity">${product.quantity} ${product.unit || ''}</span>` : ''}
       </div>
-      <button class="edit-btn" onclick="editProduct('${product.id}')">Редактировать</button>
+      <div class="product-actions">
+        <button class="edit-btn icon-btn" onclick="editProduct('${product.id}')" title="Редактировать" aria-label="Редактировать">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="delete-btn-inline icon-btn" onclick="deleteProductQuick('${product.id}', '${product.name.replace(/'/g, "\\'")}')" title="Удалить" aria-label="Удалить">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        </button>
+      </div>
     </div>
   `).join('');
+}
+
+// Автоподсказка категории на основе названия
+function suggestCategory(productName) {
+  if (!productName) return null;
+  
+  const name = productName.toLowerCase();
+  
+  // Словарь соответствий
+  const categoryMap = {
+    'яйц': 'Яйца',
+    'молок': 'Молочные продукты',
+    'сыр': 'Молочные продукты',
+    'творог': 'Молочные продукты',
+    'сметан': 'Молочные продукты',
+    'йогурт': 'Молочные продукты',
+    'кефир': 'Молочные продукты',
+    'куриц': 'Мясо',
+    'говядин': 'Мясо',
+    'свинин': 'Мясо',
+    'индейк': 'Мясо',
+    'рыб': 'Рыба',
+    'минтай': 'Рыба',
+    'хек': 'Рыба',
+    'лосось': 'Рыба',
+    'фасоль': 'Бобовые',
+    'чечевиц': 'Бобовые',
+    'нут': 'Бобовые',
+    'гречк': 'Крупы',
+    'рис': 'Крупы',
+    'овсян': 'Крупы',
+    'макарон': 'Крупы',
+    'хлеб': 'Хлеб',
+    'картофел': 'Овощи',
+    'морков': 'Овощи',
+    'лук': 'Овощи',
+    'капуст': 'Овощи',
+    'помидор': 'Овощи',
+    'огурц': 'Овощи',
+    'яблок': 'Фрукты',
+    'банан': 'Фрукты',
+    'апельсин': 'Фрукты',
+    'орех': 'Орехи',
+    'семечк': 'Орехи',
+    'соль': 'Специи',
+    'перец': 'Специи',
+    'специ': 'Специи',
+    'чай': 'Напитки',
+    'кофе': 'Напитки',
+    'масло': 'Жиры и масла',
+    'паста': 'Соусы',
+    'кетчуп': 'Соусы',
+    'майонез': 'Соусы'
+  };
+  
+  for (const [keyword, category] of Object.entries(categoryMap)) {
+    if (name.includes(keyword)) {
+      return category;
+    }
+  }
+  
+  return null;
+}
+
+// Валидация количества в зависимости от единицы измерения
+function validateQuantity(quantity, unit) {
+  if (!quantity) return { valid: true };
+  
+  const qty = parseFloat(quantity);
+  if (isNaN(qty) || qty < 0) {
+    return { valid: false, message: 'Количество должно быть положительным числом' };
+  }
+  
+  // Для штучных единиц - только целые числа
+  const pieceUnits = ['шт', 'штук', 'штуки', 'шт.', 'piece', 'pcs'];
+  if (unit && pieceUnits.some(u => unit.toLowerCase().includes(u.toLowerCase()))) {
+    if (!Number.isInteger(qty)) {
+      return { valid: false, message: 'Для штучных единиц количество должно быть целым числом' };
+    }
+  }
+  
+  return { valid: true };
 }
 
 function openProductForm(productId = null) {
@@ -317,12 +441,91 @@ function openProductForm(productId = null) {
   document.getElementById('edit-name').value = product?.name || '';
   document.getElementById('edit-category').value = product?.category || '';
   document.getElementById('edit-in-stock').checked = product?.in_stock || false;
+  document.getElementById('edit-wishlist').checked = product?.wishlist || false;
   document.getElementById('edit-quantity').value = product?.quantity || '';
   document.getElementById('edit-unit').value = product?.unit || '';
   
   const deleteBtn = document.getElementById('delete-product-btn');
   if (deleteBtn) {
     deleteBtn.style.display = productId ? 'block' : 'none';
+  }
+  
+  // Добавляем обработчики для автоподсказки и валидации
+  const nameInput = document.getElementById('edit-name');
+  const categorySelect = document.getElementById('edit-category');
+  const quantityInput = document.getElementById('edit-quantity');
+  const unitInput = document.getElementById('edit-unit');
+  
+  // Удаляем старые обработчики если есть
+  const newNameHandler = (e) => {
+    if (!productId) { // Только для новых продуктов
+      const suggested = suggestCategory(e.target.value);
+      if (suggested && !categorySelect.value) {
+        categorySelect.value = suggested;
+        // Визуальная подсказка
+        categorySelect.style.backgroundColor = '#e0f2fe';
+        setTimeout(() => {
+          categorySelect.style.backgroundColor = '';
+        }, 2000);
+      }
+    }
+  };
+  
+  const newQuantityHandler = () => {
+    const quantity = quantityInput.value;
+    const unit = unitInput.value;
+    const validation = validateQuantity(quantity, unit);
+    
+    if (!validation.valid) {
+      quantityInput.setCustomValidity(validation.message);
+      quantityInput.reportValidity();
+    } else {
+      quantityInput.setCustomValidity('');
+    }
+  };
+  
+  const newUnitHandler = () => {
+    newQuantityHandler(); // Перепроверяем при изменении единицы
+    
+    // Динамически меняем step для количества в зависимости от единицы
+    const unit = unitInput.value.toLowerCase();
+    const pieceUnits = ['шт', 'штук', 'штуки', 'шт.', 'piece', 'pcs'];
+    const isPieceUnit = pieceUnits.some(u => unit.includes(u));
+    
+    if (isPieceUnit) {
+      quantityInput.step = '1';
+      quantityInput.setAttribute('step', '1');
+    } else {
+      quantityInput.step = '0.1';
+      quantityInput.setAttribute('step', '0.1');
+    }
+  };
+  
+  // Удаляем старые обработчики
+  nameInput.removeEventListener('input', nameInput._categoryHandler);
+  quantityInput.removeEventListener('input', quantityInput._quantityHandler);
+  quantityInput.removeEventListener('blur', quantityInput._quantityHandler);
+  unitInput.removeEventListener('input', unitInput._unitHandler);
+  unitInput.removeEventListener('blur', unitInput._unitHandler);
+  
+  // Сохраняем ссылки для последующего удаления
+  nameInput._categoryHandler = newNameHandler;
+  quantityInput._quantityHandler = newQuantityHandler;
+  unitInput._unitHandler = newUnitHandler;
+  
+  // Добавляем новые обработчики
+  nameInput.addEventListener('input', newNameHandler);
+  quantityInput.addEventListener('input', newQuantityHandler);
+  quantityInput.addEventListener('blur', newQuantityHandler);
+  unitInput.addEventListener('input', newUnitHandler);
+  unitInput.addEventListener('blur', newUnitHandler);
+  
+  // Устанавливаем правильный step при загрузке формы
+  if (product?.unit) {
+    const unit = product.unit.toLowerCase();
+    const pieceUnits = ['шт', 'штук', 'штуки', 'шт.', 'piece', 'pcs'];
+    const isPieceUnit = pieceUnits.some(u => unit.includes(u));
+    quantityInput.step = isPieceUnit ? '1' : '0.1';
   }
 
   // Обновляем обработчик формы
@@ -334,15 +537,25 @@ function openProductForm(productId = null) {
 
   const submitHandler = async (e) => {
     e.preventDefault();
-    const name = document.getElementById('edit-name').value;
+    const name = document.getElementById('edit-name').value.trim();
     const category = document.getElementById('edit-category').value;
     const inStock = document.getElementById('edit-in-stock').checked;
-    const quantity = document.getElementById('edit-quantity').value;
-    const unit = document.getElementById('edit-unit').value;
+    const wishlist = document.getElementById('edit-wishlist').checked;
+    const quantity = document.getElementById('edit-quantity').value.trim();
+    const unit = document.getElementById('edit-unit').value.trim();
 
     if (!name || !category) {
       alert('Заполните название и категорию');
       return;
+    }
+    
+    // Валидация количества
+    if (quantity) {
+      const validation = validateQuantity(quantity, unit);
+      if (!validation.valid) {
+        alert(validation.message);
+        return;
+      }
     }
 
     if (productId) {
@@ -350,6 +563,7 @@ function openProductForm(productId = null) {
         name,
         category,
         in_stock: inStock,
+        wishlist: wishlist,
         quantity: quantity || null,
         unit: unit || null
       });
@@ -358,11 +572,13 @@ function openProductForm(productId = null) {
         name,
         category,
         in_stock: inStock,
+        wishlist: wishlist,
         quantity: quantity || null,
         unit: unit || null
       });
     }
-    showScreen('outOfStock');
+    showScreen('menuScreen');
+    updateBottomNav('products');
   };
 
   form._submitHandler = submitHandler;
@@ -373,6 +589,22 @@ function openProductForm(productId = null) {
 
 window.editProduct = function(productId) {
   openProductForm(productId);
+};
+
+window.deleteProductQuick = async function(productId, productName) {
+  if (confirm(`Удалить "${productName}"?`)) {
+    try {
+      const result = await deleteProduct(productId);
+      // Если продукт уже был удален, список уже обновлен
+      // Иначе обновится через WebSocket
+      if (result && result.alreadyDeleted) {
+        console.log('Product was already deleted, list updated locally');
+      }
+    } catch (error) {
+      // Ошибка уже обработана в deleteProduct с alert (если нужно)
+      console.error('Ошибка удаления:', error);
+    }
+  }
 };
 
 async function createProduct(productData) {
@@ -419,17 +651,47 @@ async function updateProduct(productId, updates) {
 
 async function deleteProduct(productId) {
   try {
+    if (!workspaceId || !clientToken) {
+      throw new Error('Не авторизован. Переподключитесь к workspace.');
+    }
+
+    const headers = getAuthHeaders();
+    console.log('Deleting product:', productId, 'Workspace:', workspaceId, 'Headers:', headers);
+
     const response = await fetch(`${API_BASE}/products/${productId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      headers: headers
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete product');
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Delete error response:', response.status, errorData);
+      
+      if (response.status === 404) {
+        // Продукт уже удален - просто обновим список локально
+        currentProducts = currentProducts.filter(p => p.id !== productId);
+        renderProducts();
+        return { success: true, alreadyDeleted: true };
+      }
+      
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Нет доступа. Переподключитесь к workspace.');
+      }
+      
+      throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
     }
+    
+    // Успешное удаление - список обновится через WebSocket
+    const result = await response.json();
+    console.log('Product deleted successfully:', result);
+    return result;
   } catch (error) {
     console.error('Failed to delete product:', error);
-    alert('Ошибка удаления продукта');
+    // Не показываем alert если продукт уже был удален
+    if (!error.message.includes('уже был удалён') && !error.alreadyDeleted) {
+      alert(`Ошибка удаления: ${error.message}`);
+    }
+    throw error;
   }
 }
 
@@ -458,7 +720,12 @@ function renderRecipes() {
           <p class="recipe-products">Продукты: ${productNames || 'не указаны'}</p>
           ${recipe.notes ? `<p class="recipe-notes">${recipe.notes}</p>` : ''}
         </div>
-        <button class="edit-btn" onclick="editRecipe('${recipe.id}')">Редактировать</button>
+        <button class="edit-btn icon-btn" onclick="editRecipe('${recipe.id}')" title="Редактировать" aria-label="Редактировать">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
       </div>
     `;
   }).join('');
@@ -548,6 +815,121 @@ function showScreen(screenName) {
     if (screen) screen.classList.add('hidden');
   });
   screens[screenName]?.classList.remove('hidden');
+  
+  // Update bottom navigation visibility and active state
+  const bottomNav = document.getElementById('bottom-nav');
+  if (bottomNav) {
+    // Hide nav on public landing and edit screens
+    if (screenName === 'publicLanding' || screenName === 'productEdit' || screenName === 'recipeEdit') {
+      bottomNav.classList.add('hidden');
+    } else {
+      bottomNav.classList.remove('hidden');
+      // Гарантируем горизонтальное расположение
+      bottomNav.style.display = 'flex';
+      bottomNav.style.flexDirection = 'row';
+      bottomNav.style.flexWrap = 'nowrap';
+      bottomNav.style.justifyContent = 'space-around';
+      bottomNav.style.alignItems = 'center';
+      // Update active state based on screen
+      if (screenName === 'menuScreen') {
+        updateBottomNav('products');
+      } else if (screenName === 'recipes') {
+        updateBottomNav('recipes');
+      }
+    }
+  }
+}
+
+function updateBottomNav(activeTab) {
+  const productsTab = document.getElementById('nav-products-tab');
+  const recipesTab = document.getElementById('nav-recipes-tab');
+  
+  if (productsTab && recipesTab) {
+    // Remove active state from all tabs
+    productsTab.classList.remove('active');
+    productsTab.removeAttribute('aria-current');
+    recipesTab.classList.remove('active');
+    recipesTab.removeAttribute('aria-current');
+    
+    // Set active state
+    if (activeTab === 'products') {
+      productsTab.classList.add('active');
+      productsTab.setAttribute('aria-current', 'page');
+    } else if (activeTab === 'recipes') {
+      recipesTab.classList.add('active');
+      recipesTab.setAttribute('aria-current', 'page');
+    }
+  }
+}
+
+// Tab switching functionality
+function switchTab(tabName) {
+  currentTab = tabName;
+  
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const isActive = btn.dataset.tab === tabName;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive);
+  });
+  
+  // Update tab panels
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    const isActive = panel.id === `tab-panel-${tabName}`;
+    panel.classList.toggle('active', isActive);
+    panel.setAttribute('aria-hidden', !isActive);
+  });
+}
+
+// Render wishlist
+function renderWishlist() {
+  const container = document.getElementById('wishlist-list');
+  if (!container) return;
+
+  wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
+
+  if (wishlistProducts.length === 0) {
+    container.innerHTML = '<p class="empty-message">Нет продуктов в списке желаний</p>';
+    return;
+  }
+
+  renderProductList('wishlist-list', wishlistProducts);
+}
+
+async function initBasket() {
+  if (!workspaceId || !clientToken) {
+    alert('Не авторизован. Переподключитесь к workspace.');
+    return;
+  }
+
+  if (!confirm('Добавить базовую корзину продуктов? Существующие продукты не будут дублироваться.')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/init-basket`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to init basket');
+    }
+
+    const result = await response.json();
+    
+    if (result.added > 0) {
+      alert(`✅ Добавлено ${result.added} продуктов из базовой корзины!\nВсего продуктов: ${result.total}`);
+      // Переключаемся на таб "Нужно" чтобы увидеть добавленные продукты
+      switchTab('need');
+      // Список обновится автоматически через WebSocket
+    } else {
+      alert('Все продукты из базовой корзины уже есть в вашем списке.');
+    }
+  } catch (error) {
+    console.error('Failed to init basket:', error);
+    alert('Ошибка добавления базовой корзины');
+  }
 }
 
 // Запуск приложения после загрузки DOM

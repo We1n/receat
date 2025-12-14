@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "init-products": "node scripts/init_products.js",
+    "fill-pantry": "node scripts/fill_pantry.js"
   },
   "keywords": ["pantry", "pwa", "api"],
   "author": "",
@@ -21,4 +23,5 @@
     "nodemon": "^3.0.1"
   }
 }
+
 
