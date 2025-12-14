@@ -1,0 +1,17 @@
+{
+  "name": "shared-pantry-frontend",
+  "version": "1.0.0",
+  "description": "Frontend PWA для Shared Pantry",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.17.0"
+  }
+}
+

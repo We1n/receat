@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Shared Pantry - учёт продуктов для двух устройств">
+  <title>Shared Pantry</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Public Landing (если нет доступа) -->
+    <div id="public-landing" class="screen hidden">
+      <h1>Shared Pantry</h1>
+      <p>Введите invite-ссылку для доступа к workspace</p>
+      <input type="text" id="workspace-input" placeholder="workspace_id">
+      <button id="join-btn">Присоединиться</button>
+    </div>
+
+    <!-- Out of Stock (главный экран) -->
+    <div id="out-of-stock" class="screen hidden">
+      <header>
+        <h1>Нужно купить</h1>
+        <div class="header-actions">
+          <button id="add-product-btn">+ Добавить продукт</button>
+          <button id="toggle-view-btn">Показать в наличии</button>
+          <button id="nav-recipes-btn">Рецепты</button>
+        </div>
+      </header>
+      <div id="products-out-list"></div>
+    </div>
+
+    <!-- In Stock -->
+    <div id="in-stock" class="screen hidden">
+      <header>
+        <h1>В наличии</h1>
+        <div class="header-actions">
+          <button id="add-product-btn-2">+ Добавить продукт</button>
+          <button id="toggle-view-btn-2">Показать нужно купить</button>
+          <button id="nav-recipes-btn-2">Рецепты</button>
+        </div>
+      </header>
+      <div id="products-in-list"></div>
+    </div>
+
+    <!-- Product Add/Edit -->
+    <div id="product-edit" class="screen hidden">
+      <header>
+        <h2 id="edit-product-name">Новый продукт</h2>
+        <button id="close-edit-btn">Закрыть</button>
+      </header>
+      <form id="product-edit-form">
+        <label>
+          Название:
+          <input type="text" id="edit-name" required>
+        </label>
+        <label>
+          Категория:
+          <select id="edit-category" required>
+            <option value="">Выберите категорию</option>
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" id="edit-in-stock"> В наличии
+        </label>
+        <label>
+          Количество:
+          <input type="number" id="edit-quantity" step="0.1">
+        </label>
+        <label>
+          Единица измерения:
+          <input type="text" id="edit-unit" placeholder="кг, л, шт...">
+        </label>
+        <div class="form-actions">
+          <button type="submit">Сохранить</button>
+          <button type="button" id="delete-product-btn" class="delete-btn" style="display: none;">Удалить</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Recipes -->
+    <div id="recipes" class="screen hidden">
+      <header>
+        <h1>Рецепты</h1>
+        <div class="header-actions">
+          <button id="add-recipe-btn">+ Добавить рецепт</button>
+          <button id="nav-products-btn">Продукты</button>
+        </div>
+      </header>
+      <div id="recipes-list"></div>
+    </div>
+
+    <!-- Recipe Add/Edit -->
+    <div id="recipe-edit" class="screen hidden">
+      <header>
+        <h2 id="edit-recipe-name">Новый рецепт</h2>
+        <button id="close-recipe-btn">Закрыть</button>
+      </header>
+      <form id="recipe-edit-form">
+        <label>
+          Название:
+          <input type="text" id="edit-recipe-name-input" required>
+        </label>
+        <label>
+          Продукты (через запятую, ID или названия):
+          <input type="text" id="edit-recipe-products" placeholder="product_id1, product_id2">
+        </label>
+        <label>
+          Заметки:
+          <textarea id="edit-recipe-notes" rows="4"></textarea>
+        </label>
+        <div class="form-actions">
+          <button type="submit">Сохранить</button>
+          <button type="button" id="delete-recipe-btn" class="delete-btn" style="display: none;">Удалить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
+
