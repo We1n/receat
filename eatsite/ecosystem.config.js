@@ -17,7 +17,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
-        MAX_CLIENTS_PER_WORKSPACE: 5
+        MAX_CLIENTS_PER_WORKSPACE: 25
       },
       error_file: './logs/backend-error.log',
       out_file: './logs/backend-out.log',

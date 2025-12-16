@@ -4,6 +4,19 @@
 const fs = require('fs');
 const path = require('path');
 
+// Читаем base path из vite.config.js
+let basePath = '/';
+try {
+  const viteConfigPath = path.join(__dirname, '..', 'frontend', 'vite.config.js');
+  const viteConfigContent = fs.readFileSync(viteConfigPath, 'utf8');
+  const baseMatch = viteConfigContent.match(/base:\s*['"`]([^'"`]+)['"`]/);
+  if (baseMatch) {
+    basePath = baseMatch[1];
+  }
+} catch (e) {
+  console.warn('⚠️  Не удалось прочитать base path из vite.config.js, используем "/"');
+}
+
 const distDir = path.join(__dirname, '..', 'frontend', 'dist');
 const iconsDir = path.join(distDir, 'icons');
 
@@ -34,37 +47,32 @@ if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
 }
 
-// Проверяем наличие обязательных PWA-иконок
+// Копируем PWA иконки из корня eatsite в dist/icons
 const REQUIRED_PWA_ICONS = [
-  'icon-192.png',
-  'icon-512.png'
+  { name: 'icon-192.png', source: path.join(__dirname, '..', 'icon-192.png') },
+  { name: 'icon-512.png', source: path.join(__dirname, '..', 'icon-512.png') }
 ];
 
-// Проверяем наличие иконок в dist/icons
-const missingIcons = [];
-REQUIRED_PWA_ICONS.forEach((iconName) => {
-  const iconPath = path.join(iconsDir, iconName);
-  if (!fs.existsSync(iconPath)) {
-    missingIcons.push(iconName);
+REQUIRED_PWA_ICONS.forEach((icon) => {
+  const destPath = path.join(iconsDir, icon.name);
+  if (fs.existsSync(icon.source)) {
+    try {
+      fs.copyFileSync(icon.source, destPath);
+      console.log(`✅ Иконка ${icon.name} скопирована в dist/icons/`);
+    } catch (e) {
+      console.warn(`⚠️  Не удалось скопировать ${icon.name}:`, e.message);
+    }
+  } else {
+    console.warn(`⚠️  Исходный файл ${icon.source} не найден, иконка ${icon.name} не будет скопирована`);
   }
 });
 
-if (missingIcons.length > 0) {
-  console.warn('⚠️  Отсутствуют PWA-иконки:');
-  missingIcons.forEach((icon) => {
-    console.warn(`   - ${icon}`);
-  });
-  console.warn('');
-  console.warn('   Иконки будут сгенерированы автоматически при запуске сервера.');
-  console.warn('   Для production рекомендуется использовать реальные иконки.');
-}
-
-// Проверяем наличие manifest.json в dist
-const manifestPath = path.join(distDir, 'manifest.json');
+// Проверяем наличие manifest.webmanifest в dist
+const manifestPath = path.join(distDir, 'manifest.webmanifest');
 if (!fs.existsSync(manifestPath)) {
-  console.warn('⚠️  manifest.json not found in dist, vite-plugin-pwa should generate it');
+  console.warn('⚠️  manifest.webmanifest not found in dist, vite-plugin-pwa should generate it');
 } else {
-  console.log('✅ manifest.json found in dist');
+  console.log('✅ manifest.webmanifest found in dist');
 }
 
 // Проверяем наличие service worker в dist
@@ -81,14 +89,15 @@ const indexPath = path.join(distDir, 'index.html');
 if (fs.existsSync(indexPath)) {
   let htmlContent = fs.readFileSync(indexPath, 'utf8');
   
-  // Исправляем ссылку на favicon.ico (заменяем путь с assets на корень)
+  // Исправляем ссылку на favicon.ico (заменяем путь с assets на корень с учетом base path)
   const faviconLinkRe = /<link[^>]*rel=["']icon["'][^>]*href=["'][^"']*favicon[^"']*["'][^>]*>/gi;
+  const faviconHref = basePath + (basePath.endsWith('/') ? '' : '/') + 'favicon.ico';
   if (faviconLinkRe.test(htmlContent)) {
-    htmlContent = htmlContent.replace(faviconLinkRe, '  <link rel="icon" type="image/x-icon" href="/favicon.ico">');
+    htmlContent = htmlContent.replace(faviconLinkRe, `  <link rel="icon" type="image/x-icon" href="${faviconHref}">`);
     console.log('✅ Обновлена ссылка на favicon.ico в index.html');
   } else if (fs.existsSync(faviconDest)) {
     // Добавляем ссылку на favicon.ico если её нет, но файл существует
-    const faviconLink = '  <link rel="icon" type="image/x-icon" href="/favicon.ico">\n';
+    const faviconLink = `  <link rel="icon" type="image/x-icon" href="${faviconHref}">\n`;
     if (htmlContent.includes('<title>')) {
       htmlContent = htmlContent.replace('<title>', faviconLink + '  <title>');
       console.log('✅ Добавлена ссылка на favicon.ico в index.html');
@@ -102,8 +111,9 @@ if (fs.existsSync(indexPath)) {
     console.log('♻️  Удалены существующие ссылки rel="manifest" из index.html');
   }
 
-  // Добавляем ссылку на manifest.json
-  const manifestLink = '  <link rel="manifest" href="/manifest.json">\n';
+  // Добавляем ссылку на manifest.webmanifest с учетом base path
+  const manifestHref = basePath + (basePath.endsWith('/') ? '' : '/') + 'manifest.webmanifest';
+  const manifestLink = `  <link rel="manifest" href="${manifestHref}">\n`;
   
   if (htmlContent.includes('</head>')) {
     if (!htmlContent.includes(manifestLink.trim())) {

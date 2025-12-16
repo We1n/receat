@@ -7,8 +7,22 @@
  * - Нет локального кеширования данных
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+// Используем относительные пути для API (проксируется через server.js)
+// Для продакшена можно задать через переменные окружения VITE_API_URL и VITE_WS_URL
+const API_BASE = import.meta.env.VITE_API_URL || '';
+// WebSocket использует текущий хост с заменой протокола
+// В продакшене WebSocket проксируется через nginx
+const getWSBase = () => {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  // Определяем WebSocket URL на основе текущего хоста
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host.split(':')[0]; // Убираем порт
+  // WebSocket подключается через nginx к /ws, nginx проксирует на backend:3000
+  return `${protocol}//${host}/ws`;
+};
+const WS_BASE = getWSBase();
 
 // State
 let workspaceId = null;
