@@ -89,7 +89,7 @@ header {
 
 .menu-header {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 0;
   padding: 16px 20px;
@@ -98,6 +98,34 @@ header {
 .menu-header h1 {
   margin: 0;
   font-size: 28px;
+  flex: 1;
+}
+
+.switch-workspace-btn {
+  background: transparent;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+}
+
+.switch-workspace-btn:hover {
+  background: var(--border-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: rotate(180deg);
+}
+
+.switch-workspace-btn:active {
+  transform: rotate(180deg) scale(0.95);
   font-weight: 700;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   -webkit-background-clip: text;
@@ -216,6 +244,9 @@ header h1, header h2 {
 /* Base Basket Content */
 .base-basket-content {
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .info-card {
@@ -239,6 +270,35 @@ header h1, header h2 {
   font-size: 15px;
   margin-bottom: 24px;
   line-height: 1.6;
+}
+
+.base-basket-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.edit-basket-btn,
+.init-basket-btn {
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.edit-basket-btn {
+  background: var(--primary);
+  color: white;
+}
+
+.edit-basket-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .init-basket-btn {
@@ -311,6 +371,47 @@ button:active {
   width: 100%;
   margin-top: auto;
   padding-top: 4px;
+}
+
+.toggle-stock-btn {
+  padding: 8px;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  border: none;
+  cursor: pointer;
+}
+
+.toggle-stock-btn.add-btn {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+  color: white;
+}
+
+.toggle-stock-btn.add-btn:hover {
+  background: linear-gradient(135deg, var(--secondary-dark) 0%, #059669 100%);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.toggle-stock-btn.remove-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.toggle-stock-btn.remove-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.toggle-stock-btn svg {
+  stroke-width: 2.5;
 }
 
 .edit-btn {

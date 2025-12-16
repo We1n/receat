@@ -16,6 +16,7 @@ let clientToken = null;
 let ws = null;
 let currentProducts = [];
 let currentRecipes = [];
+let baseBasket = [];
 
 // DOM Elements (инициализируются после загрузки DOM)
 let screens = {};
@@ -96,6 +97,18 @@ function setupEventListeners() {
     await initBasket();
   });
 
+  // Edit basket button
+  document.getElementById('edit-basket-btn')?.addEventListener('click', () => {
+    openBasketEditor();
+  });
+
+  // Switch workspace button
+  document.getElementById('switch-workspace-btn')?.addEventListener('click', () => {
+    if (confirm('Выйти из текущего воркспейса и переключиться на другой?')) {
+      switchWorkspace();
+    }
+  });
+
   // Close edit form
   document.getElementById('close-edit-btn')?.addEventListener('click', () => {
     showScreen('menuScreen');
@@ -160,6 +173,38 @@ function setupEventListeners() {
   });
 }
 
+function switchWorkspace() {
+  // Закрываем WebSocket соединение
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  
+  // Очищаем данные
+  clientToken = null;
+  workspaceId = null;
+  currentProducts = [];
+  currentRecipes = [];
+  
+  // Очищаем localStorage
+  localStorage.removeItem('client_token');
+  localStorage.removeItem('workspace_id');
+  
+  // Показываем экран входа
+  showScreen('publicLanding');
+  const bottomNav = document.getElementById('bottom-nav');
+  if (bottomNav) {
+    bottomNav.classList.add('hidden');
+  }
+  
+  // Очищаем поле ввода
+  const input = document.getElementById('workspace-input');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+}
+
 async function joinWorkspace(id) {
   try {
     const response = await fetch(`${API_BASE}/workspace/${id}/join`, {
@@ -175,7 +220,8 @@ async function joinWorkspace(id) {
       localStorage.setItem('workspace_id', workspaceId);
       connectToWorkspace(workspaceId, clientToken);
     } else {
-      alert('Workspace переполнен (максимум 2 клиента)');
+      const maxClients = data.error?.match(/max (\d+) clients/)?.[1] || '2';
+      alert(`Workspace переполнен (максимум ${maxClients} клиентов)`);
     }
   } catch (error) {
     console.error('Failed to join workspace:', error);
@@ -240,9 +286,11 @@ async function loadInitialState() {
       currentProducts = data.products || [];
       currentRecipes = data.recipes || [];
       wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
+      await loadBaseBasket();
       renderProducts();
       renderRecipes();
       renderWishlist();
+      renderBaseBasket();
       showScreen('menuScreen');
       switchTab('need');
       updateBottomNav('products');
@@ -324,7 +372,13 @@ function renderProductList(containerId, products) {
     return;
   }
 
-  container.innerHTML = products.map(product => `
+  container.innerHTML = products.map(product => {
+    const isInStock = product.in_stock;
+    const toggleIcon = isInStock ? 'minus' : 'plus';
+    const toggleTitle = isInStock ? 'Убрать из "В наличии"' : 'Добавить в "В наличии"';
+    const toggleClass = isInStock ? 'toggle-stock-btn remove-btn' : 'toggle-stock-btn add-btn';
+    
+    return `
     <div class="product-item" data-id="${product.id}">
       <div class="product-info">
         <span class="product-name">${product.name}</span>
@@ -332,6 +386,18 @@ function renderProductList(containerId, products) {
         ${product.quantity ? `<span class="product-quantity">${product.quantity} ${product.unit || ''}</span>` : ''}
       </div>
       <div class="product-actions">
+        <button class="${toggleClass} icon-btn" onclick="toggleProductStock('${product.id}')" title="${toggleTitle}" aria-label="${toggleTitle}">
+          ${toggleIcon === 'plus' ? `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          ` : `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          `}
+        </button>
         <button class="edit-btn icon-btn" onclick="editProduct('${product.id}')" title="Редактировать" aria-label="Редактировать">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -348,7 +414,8 @@ function renderProductList(containerId, products) {
         </button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // Автоподсказка категории на основе названия
@@ -604,6 +671,23 @@ window.deleteProductQuick = async function(productId, productName) {
       // Ошибка уже обработана в deleteProduct с alert (если нужно)
       console.error('Ошибка удаления:', error);
     }
+  }
+};
+
+window.toggleProductStock = async function(productId) {
+  const product = currentProducts.find(p => p.id === productId);
+  if (!product) return;
+
+  const newStatus = !product.in_stock;
+  
+  try {
+    await updateProduct(productId, {
+      in_stock: newStatus
+    });
+    // Список обновится автоматически через WebSocket
+  } catch (error) {
+    console.error('Ошибка переключения статуса:', error);
+    alert('Ошибка обновления статуса продукта');
   }
 };
 
@@ -879,6 +963,11 @@ function switchTab(tabName) {
     panel.classList.toggle('active', isActive);
     panel.setAttribute('aria-hidden', !isActive);
   });
+
+  // Обновляем базовую корзину при переключении на таб
+  if (tabName === 'base') {
+    renderBaseBasket();
+  }
 }
 
 // Render wishlist
@@ -896,13 +985,176 @@ function renderWishlist() {
   renderProductList('wishlist-list', wishlistProducts);
 }
 
+async function loadBaseBasket() {
+  if (!workspaceId || !clientToken) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/base-basket`, {
+      headers: getAuthHeaders()
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      baseBasket = data.base_basket || [];
+    }
+  } catch (error) {
+    console.error('Failed to load base basket:', error);
+  }
+}
+
+function renderBaseBasket() {
+  const container = document.getElementById('base-basket-list');
+  if (!container) return;
+
+  if (baseBasket.length === 0) {
+    container.innerHTML = '<p class="empty-message">Базовая корзина пуста. Нажмите "Редактировать корзину" чтобы добавить продукты.</p>';
+    return;
+  }
+
+  // Группируем по категориям
+  const byCategory = {};
+  baseBasket.forEach(item => {
+    const cat = item.category || 'Прочее';
+    if (!byCategory[cat]) {
+      byCategory[cat] = [];
+    }
+    byCategory[cat].push(item);
+  });
+
+  container.innerHTML = Object.entries(byCategory)
+    .map(([category, items]) => `
+      <div class="basket-category">
+        <h3>${category}</h3>
+        <ul class="basket-items">
+          ${items.map(item => `<li>${item.name}</li>`).join('')}
+        </ul>
+      </div>
+    `).join('');
+}
+
+function openBasketEditor() {
+  // Создаём модальное окно для редактирования
+  const modal = document.createElement('div');
+  modal.className = 'basket-editor-modal';
+  modal.innerHTML = `
+    <div class="basket-editor-content">
+      <header>
+        <h2>Редактирование базовой корзины</h2>
+        <button class="close-btn" onclick="this.closest('.basket-editor-modal').remove()">✕</button>
+      </header>
+      <div class="basket-editor-body">
+        <div id="basket-editor-list"></div>
+        <button id="add-basket-item-btn" class="add-item-btn">+ Добавить продукт</button>
+      </div>
+      <div class="basket-editor-actions">
+        <button id="save-basket-btn" class="save-btn">💾 Сохранить</button>
+        <button class="cancel-btn" onclick="this.closest('.basket-editor-modal').remove()">Отмена</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Рендерим список продуктов для редактирования
+  renderBasketEditor();
+
+  // Обработчики
+  document.getElementById('add-basket-item-btn')?.addEventListener('click', () => {
+    addBasketItem();
+  });
+
+  document.getElementById('save-basket-btn')?.addEventListener('click', async () => {
+    await saveBaseBasket();
+    modal.remove();
+  });
+}
+
+function renderBasketEditor() {
+  const container = document.getElementById('basket-editor-list');
+  if (!container) return;
+
+  if (baseBasket.length === 0) {
+    container.innerHTML = '<p class="empty-message">Корзина пуста. Добавьте продукты.</p>';
+    return;
+  }
+
+  container.innerHTML = baseBasket.map((item, index) => `
+    <div class="basket-editor-item" data-index="${index}">
+      <input type="text" class="basket-item-name" value="${item.name}" placeholder="Название продукта">
+      <select class="basket-item-category">
+        ${productCategories.map(cat => 
+          `<option value="${cat}" ${cat === item.category ? 'selected' : ''}>${cat}</option>`
+        ).join('')}
+      </select>
+      <button class="delete-basket-item-btn" onclick="removeBasketItem(${index})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function addBasketItem() {
+  baseBasket.push({
+    name: '',
+    category: 'Прочее',
+    in_stock: false
+  });
+  renderBasketEditor();
+}
+
+window.removeBasketItem = function(index) {
+  baseBasket.splice(index, 1);
+  renderBasketEditor();
+};
+
+async function saveBaseBasket() {
+  if (!workspaceId || !clientToken) {
+    alert('Не авторизован. Переподключитесь к workspace.');
+    return;
+  }
+
+  // Собираем данные из формы
+  const items = Array.from(document.querySelectorAll('.basket-editor-item')).map(itemEl => {
+    const nameInput = itemEl.querySelector('.basket-item-name');
+    const categorySelect = itemEl.querySelector('.basket-item-category');
+    return {
+      name: nameInput.value.trim(),
+      category: categorySelect.value,
+      in_stock: false
+    };
+  }).filter(item => item.name); // Убираем пустые
+
+  try {
+    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/base-basket`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ base_basket: items })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save base basket');
+    }
+
+    const result = await response.json();
+    baseBasket = result.base_basket || [];
+    renderBaseBasket();
+    alert('✅ Базовая корзина сохранена!');
+  } catch (error) {
+    console.error('Failed to save base basket:', error);
+    alert('Ошибка сохранения базовой корзины');
+  }
+}
+
 async function initBasket() {
   if (!workspaceId || !clientToken) {
     alert('Не авторизован. Переподключитесь к workspace.');
     return;
   }
 
-  if (!confirm('Добавить базовую корзину продуктов? Существующие продукты не будут дублироваться.')) {
+  if (!confirm('Добавить все продукты из базовой корзины в "Нужно купить"? Существующие продукты не будут дублироваться.')) {
     return;
   }
 
@@ -919,7 +1171,7 @@ async function initBasket() {
     const result = await response.json();
     
     if (result.added > 0) {
-      alert(`✅ Добавлено ${result.added} продуктов из базовой корзины!\nВсего продуктов: ${result.total}`);
+      alert(`✅ Добавлено ${result.added} продуктов в "Нужно купить"!\nВсего продуктов: ${result.total}`);
       // Переключаемся на таб "Нужно" чтобы увидеть добавленные продукты
       switchTab('need');
       // Список обновится автоматически через WebSocket

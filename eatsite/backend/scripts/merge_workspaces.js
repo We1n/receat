@@ -44,3 +44,5 @@ writeFileSync(WORKSPACES_FILE, JSON.stringify(workspaces, null, 2));
 console.log(`✅ Добавлено ${productsToAdd.length} продуктов`);
 console.log(`Всего продуктов в ${targetWorkspace}: ${workspaces[targetWorkspace].products.length}`);
 
+
+

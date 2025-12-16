@@ -19,6 +19,36 @@ import { PRODUCT_CATEGORIES } from './config/categories.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Маппинг английских категорий на русские (для обратной совместимости)
+const CATEGORY_MAPPING = {
+  'vegetables': 'Овощи',
+  'fruits': 'Фрукты',
+  'dairy': 'Молочные продукты',
+  'meat': 'Мясо',
+  'fish': 'Рыба',
+  'eggs': 'Яйца',
+  'legumes': 'Бобовые',
+  'grains': 'Крупы',
+  'bread': 'Хлеб',
+  'nuts': 'Орехи',
+  'spices': 'Специи',
+  'beverages': 'Напитки',
+  'oils': 'Жиры и масла',
+  'sauces': 'Соусы',
+  'other': 'Прочее'
+};
+
+// Функция нормализации категории (переводит английские на русские)
+function normalizeCategory(category) {
+  if (!category) return 'Прочее';
+  // Если категория на английском, переводим на русский
+  if (CATEGORY_MAPPING[category.toLowerCase()]) {
+    return CATEGORY_MAPPING[category.toLowerCase()];
+  }
+  // Если категория уже на русском, возвращаем как есть
+  return category;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -90,11 +120,17 @@ wss.on('connection', (ws, req) => {
     }
   });
 
+  // Нормализуем категории продуктов перед отправкой
+  const normalizedProducts = (workspace.products || []).map(product => ({
+    ...product,
+    category: normalizeCategory(product.category)
+  }));
+
   // Отправка текущего состояния при подключении
   ws.send(JSON.stringify({
     type: 'state',
     data: {
-      products: workspace.products || [],
+      products: normalizedProducts,
       recipes: workspace.recipes || []
     }
   }));
@@ -170,14 +206,19 @@ app.post('/workspace/:id/join', (req, res) => {
       workspace_id: workspaceId,
       products: [],
       recipes: [],
-      active_clients: []
+      active_clients: [],
+      base_basket: BASE_BASKET // Инициализируем базовую корзину по умолчанию
     };
+  } else if (!workspace.base_basket) {
+    // Если у существующего workspace нет базовой корзины, добавляем по умолчанию
+    workspace.base_basket = BASE_BASKET;
   }
 
   // Проверка лимита клиентов
-  if (workspace.active_clients.length >= 2) {
+  const MAX_CLIENTS_PER_WORKSPACE = parseInt(process.env.MAX_CLIENTS_PER_WORKSPACE || '10', 10);
+  if (workspace.active_clients.length >= MAX_CLIENTS_PER_WORKSPACE) {
     return res.status(403).json({ 
-      error: 'Workspace is full (max 2 clients)',
+      error: `Workspace is full (max ${MAX_CLIENTS_PER_WORKSPACE} clients)`,
       can_access: false
     });
   }
@@ -197,16 +238,27 @@ app.post('/workspace/:id/join', (req, res) => {
 });
 
 app.get('/workspace/:id/state', requireAccess, (req, res) => {
+  // Нормализуем категории продуктов перед отправкой
+  const normalizedProducts = (req.workspace.products || []).map(product => ({
+    ...product,
+    category: normalizeCategory(product.category)
+  }));
+
   res.json({
     workspace_id: req.workspaceId,
-    products: req.workspace.products || [],
+    products: normalizedProducts,
     recipes: req.workspace.recipes || []
   });
 });
 
 // Products
 app.get('/products', requireAccess, (req, res) => {
-  res.json(req.workspace.products || []);
+  // Нормализуем категории продуктов перед отправкой
+  const normalizedProducts = (req.workspace.products || []).map(product => ({
+    ...product,
+    category: normalizeCategory(product.category)
+  }));
+  res.json(normalizedProducts);
 });
 
 app.post('/products', requireAccess, (req, res) => {
@@ -216,7 +268,7 @@ app.post('/products', requireAccess, (req, res) => {
   const product = {
     id: uuidv4(),
     name: req.body.name,
-    category: req.body.category || 'Прочее',
+    category: normalizeCategory(req.body.category),
     in_stock: req.body.in_stock ?? false,
     wishlist: req.body.wishlist ?? false,
     quantity: req.body.quantity || null,
@@ -245,7 +297,12 @@ app.patch('/products/:id', requireAccess, (req, res) => {
   }
 
   const product = workspace.products[productIndex];
-  Object.assign(product, req.body);
+  const updates = { ...req.body };
+  // Нормализуем категорию если она обновляется
+  if (updates.category) {
+    updates.category = normalizeCategory(updates.category);
+  }
+  Object.assign(product, updates);
   saveWorkspaces(workspaces);
 
   broadcastToWorkspace(req.workspaceId, {
@@ -417,7 +474,47 @@ const BASE_BASKET = [
   { name: 'Томатная паста', category: 'Прочее', in_stock: false }
 ];
 
-// Инициализация базовой корзины в workspace
+// Получение базовой корзины
+app.get('/workspace/:id/base-basket', requireAccess, (req, res) => {
+  const workspace = req.workspace;
+  const baseBasket = workspace.base_basket || BASE_BASKET;
+  res.json({
+    workspace_id: req.workspaceId,
+    base_basket: baseBasket
+  });
+});
+
+// Обновление базовой корзины
+app.put('/workspace/:id/base-basket', requireAccess, (req, res) => {
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[req.workspaceId];
+
+  if (!workspace) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
+  // Валидация данных
+  if (!Array.isArray(req.body.base_basket)) {
+    return res.status(400).json({ error: 'base_basket must be an array' });
+  }
+
+  // Нормализуем категории в базовой корзине
+  const normalizedBasket = req.body.base_basket.map(item => ({
+    name: item.name,
+    category: normalizeCategory(item.category || 'Прочее'),
+    in_stock: false // Базовая корзина всегда с in_stock: false
+  }));
+
+  workspace.base_basket = normalizedBasket;
+  saveWorkspaces(workspaces);
+
+  res.json({
+    success: true,
+    base_basket: workspace.base_basket
+  });
+});
+
+// Инициализация базовой корзины в workspace (добавление в "нужно купить")
 app.post('/workspace/:id/init-basket', requireAccess, (req, res) => {
   const workspaces = loadWorkspaces();
   const workspace = workspaces[req.workspaceId];
@@ -426,18 +523,21 @@ app.post('/workspace/:id/init-basket', requireAccess, (req, res) => {
     return res.status(404).json({ error: 'Workspace not found' });
   }
 
+  // Используем сохранённую базовую корзину или дефолтную
+  const baseBasket = workspace.base_basket || BASE_BASKET;
+
   // Проверяем, есть ли уже продукты в workspace
   const existingProducts = workspace.products || [];
   const existingNames = new Set(existingProducts.map(p => p.name.toLowerCase()));
 
-  // Добавляем только те продукты, которых еще нет
-  const newProducts = BASE_BASKET
+  // Добавляем только те продукты, которых еще нет (все с in_stock: false - "нужно купить")
+  const newProducts = baseBasket
     .filter(product => !existingNames.has(product.name.toLowerCase()))
     .map(product => ({
       id: uuidv4(),
       name: product.name,
-      category: product.category,
-      in_stock: product.in_stock,
+      category: normalizeCategory(product.category),
+      in_stock: false, // Всегда "нужно купить"
       quantity: null,
       unit: null
     }));

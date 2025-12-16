@@ -9,8 +9,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Pantry">
   <title>Shared Pantry</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/styles.css">
+  <!-- PWA meta tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Pantry">
 </head>
 <body>
   <div id="app">
@@ -26,6 +30,7 @@
     <div id="menu-screen" class="screen hidden">
       <header class="menu-header">
         <h1>Меню</h1>
+        <button id="switch-workspace-btn" class="switch-workspace-btn" title="Сменить воркспейс">🔄</button>
       </header>
       
       <!-- Tab Navigation -->
@@ -65,9 +70,13 @@
           <div class="base-basket-content">
             <div class="info-card">
               <h2>Базовая корзина</h2>
-              <p>Добавьте стандартный набор продуктов для начала работы</p>
-              <button id="init-basket-btn" class="init-basket-btn">🛒 Добавить базовую корзину</button>
+              <p>Настройте стандартный набор продуктов, который можно добавить одним нажатием</p>
+              <div class="base-basket-actions">
+                <button id="edit-basket-btn" class="edit-basket-btn">✏️ Редактировать корзину</button>
+                <button id="init-basket-btn" class="init-basket-btn">🛒 Добавить в "Нужно купить"</button>
+              </div>
             </div>
+            <div id="base-basket-list" class="base-basket-list"></div>
           </div>
         </div>
 

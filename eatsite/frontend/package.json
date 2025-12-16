@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vite build && node ../scripts/copy-pwa-files.js",
+    "preview": "vite preview",
+    "build:prod": "vite build && node ../scripts/copy-pwa-files.js"
   },
   "dependencies": {},
   "devDependencies": {
@@ -14,6 +15,8 @@
     "vite-plugin-pwa": "^0.17.0"
   }
 }
+
+
 
 
 
