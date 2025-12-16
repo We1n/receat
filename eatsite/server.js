@@ -142,18 +142,18 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith('/api/') || pathname.startsWith('/workspace/') || 
       pathname.startsWith('/products') || pathname.startsWith('/recipes') || 
       pathname.startsWith('/categories') || pathname.startsWith('/export') || 
-      pathname.startsWith('/health')) {
+      pathname.startsWith('/health') || pathname.startsWith('/base-basket')) {
     const apiPath = pathname + (parsedUrl.search || '');
     console.log(`[PROXY] Proxying ${req.method} ${req.url} -> localhost:${BACKEND_PORT}${apiPath}`);
     
     const options = {
-      hostname: 'localhost',
+      hostname: process.env.BACKEND_HOST || 'localhost',
       port: BACKEND_PORT,
       path: apiPath,
       method: req.method,
       headers: {
         ...req.headers,
-        host: `localhost:${BACKEND_PORT}`,
+        host: `${process.env.BACKEND_HOST || 'localhost'}:${BACKEND_PORT}`,
       },
     };
 

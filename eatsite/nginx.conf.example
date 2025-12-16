@@ -31,7 +31,7 @@ server {
 
     # ===== Eatsite Frontend (статический контент) =====
     location /pantry {
-        alias /path/to/eatsite/frontend/dist;
+        alias /home/webapp/projects/eatsite/frontend/dist;
         try_files $uri $uri/ /pantry/index.html;
         
         # Кеширование статических файлов
@@ -49,7 +49,7 @@ server {
         
         # WebSocket support
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $http_connection;
         
         # Стандартные заголовки
         proxy_set_header Host $host;
@@ -62,24 +62,18 @@ server {
         proxy_send_timeout 86400;
     }
 
-    # ===== WebSocket для eatsite =====
-    location /pantry/ws {
-        rewrite ^/pantry/ws(.*)$ $1 break;
+    # ===== Eatsite Backend API (все остальные endpoints) =====
+    location ~ ^/pantry/(workspace|products|recipes|categories|export|health|base-basket) {
+        rewrite ^/pantry/(.*)$ /$1 break;
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $http_connection;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_read_timeout 86400;
         proxy_send_timeout 86400;
-    }
-
-    # ===== Health check =====
-    location /pantry/health {
-        proxy_pass http://localhost:3000/health;
-        proxy_set_header Host $host;
     }
 
     # ===== Корневой путь (опционально) =====
@@ -88,4 +82,5 @@ server {
     }
 }
 
-
+# Примечание: WebSocket для eatsite подключается напрямую к backend на порту 3000
+# Frontend должен использовать ws://your-domain.com:3000 или настроить переменную VITE_WS_URL

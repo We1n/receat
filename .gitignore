@@ -36,16 +36,25 @@ logs/
 *.log
 
 # --- Runtime-данные (ВАЖНО: оставить стартовые данные!) ---
-data/cache.json
-data/user_states.json
-data/shopping_lists.json
-data/categories_backup.json
-data/user_data/
-src/data/users.json
+bot/data/cache.json
+bot/data/user_states.json
+bot/data/shopping_lists.json
+bot/data/categories_backup.json
+bot/data/user_data/
+bot/src/data/users.json
 
 # --- Monitoring ---
-monitoring/monitoring.json
-src/data/monitoring/
+bot/monitoring/monitoring.json
+bot/src/data/monitoring/
+
+# --- Eatsite ---
+eatsite/backend/data/
+eatsite/backend/node_modules/
+eatsite/frontend/node_modules/
+eatsite/frontend/dist/
+eatsite/.env
+eatsite/logs/
+eatsite/.pm2/
 
 # --- IDE/редакторы ---
 .idea/

@@ -1,0 +1,14 @@
+# Production Server Configuration
+# Скопируйте этот файл в .env и настройте значения
+
+PORT=8082
+BACKEND_PORT=3000
+BACKEND_HOST=localhost
+
+# Backend Configuration
+MAX_CLIENTS_PER_WORKSPACE=5
+
+# Frontend Configuration (опционально, для кастомного API URL)
+# VITE_API_URL=http://your-domain.com
+# VITE_WS_URL=ws://your-domain.com
+

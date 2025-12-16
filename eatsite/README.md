@@ -87,7 +87,33 @@ Frontend запустится на `http://localhost:5173`
 - **Sync**: WebSocket для real-time синхронизации
 - **Storage**: JSON файлы (backend/data/workspaces.json)
 
-## Документация
+## Production Deployment
 
-См. [ARCHITECTURE.md](./ARCHITECTURE.md) для детального описания архитектуры.
+**⚠️ Важно:** 
+- Сборка `frontend/dist` выполняется **локально** на вашем компьютере, затем загружается на сервер
+- Eatsite размещается рядом с существующим проектом `crm-app`
+- Все операции выполняются от пользователя `webapp`
+
+### Быстрый деплой на сервер
+
+```bash
+# 1. Локально: Сборка frontend
+cd frontend && npm run build
+
+# 2. Загрузите файлы на сервер через WinSCP:
+#    - backend/ (без node_modules и data)
+#    - frontend/dist/
+#    - server.js, ecosystem.config.js, update.sh
+
+# 3. На сервере (от пользователя webapp):
+cd /home/webapp/projects/eatsite
+mkdir -p logs backend/data
+cd backend && npm install --production
+cd ..
+# Создайте .env файл (см. ENV_EXAMPLE.txt)
+pm2 start ecosystem.config.js
+pm2 save
+```
+
+Подробная информация о сервере: см. [server-info.md](../server-info.md) в корне репозитория.
 

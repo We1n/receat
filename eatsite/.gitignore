@@ -1,9 +1,40 @@
+# Зависимости
 node_modules/
+__pycache__/
+*.pyc
+
+# Переменные окружения
 .env
+.env.local
+.env.*.local
+
+# Логи
 *.log
-.DS_Store
+logs/
+
+# Данные (не коммитим)
 backend/data/
-frontend/dist/
+workspaces.json
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Временные файлы
+*.tmp
+.cache/
+
+# PM2 (только данные, не конфиг)
+.pm2/
+
+# Собранные файлы (опционально - можно коммитить для деплоя)
+# frontend/dist/
 
 
 

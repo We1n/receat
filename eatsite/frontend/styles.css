@@ -101,6 +101,13 @@ header {
   flex: 1;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.faq-btn,
 .switch-workspace-btn {
   background: transparent;
   border: 2px solid var(--border);
@@ -117,6 +124,12 @@ header {
   height: 40px;
 }
 
+.faq-btn:hover {
+  background: var(--border-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .switch-workspace-btn:hover {
   background: var(--border-light);
   border-color: var(--primary);
@@ -126,11 +139,116 @@ header {
 
 .switch-workspace-btn:active {
   transform: rotate(180deg) scale(0.95);
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+}
+
+.faq-btn:active {
+  transform: scale(0.95);
+}
+
+/* FAQ Modal */
+.faq-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.faq-content {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+.faq-content header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-content header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.faq-content .close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.faq-content .close-btn:hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+
+.faq-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.faq-section {
+  margin-bottom: 24px;
+}
+
+.faq-section:last-child {
+  margin-bottom: 0;
+}
+
+.faq-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.faq-section p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.faq-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.faq-list li {
+  padding: 8px 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.faq-list li:last-child {
+  border-bottom: none;
+}
+
+.faq-list li strong {
+  color: var(--text-primary);
 }
 
 .add-product-btn {
