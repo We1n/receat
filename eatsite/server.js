@@ -192,7 +192,12 @@ const server = http.createServer((req, res) => {
   }
 
   // Service Worker
-  if (pathname === '/sw.js' || pathname === '/service-worker.js') {
+  // Обрабатываем как /sw.js, так и /eat/sw.js
+  let swPathname = pathname;
+  if (swPathname.startsWith('/eat')) {
+    swPathname = swPathname.replace(/^\/eat\/?/, '/');
+  }
+  if (swPathname === '/sw.js' || swPathname === '/service-worker.js') {
     const swPath = path.join(BUILD_DIR, 'sw.js');
     const swPathAlt = path.join(BUILD_DIR, 'service-worker.js');
     
@@ -234,7 +239,12 @@ const server = http.createServer((req, res) => {
   }
 
   // Manifest.json / manifest.webmanifest
-  if (pathname === '/manifest.json' || pathname === '/manifest.webmanifest') {
+  // Обрабатываем как /manifest.webmanifest, так и /eat/manifest.webmanifest
+  let manifestPathname = pathname;
+  if (manifestPathname.startsWith('/eat')) {
+    manifestPathname = manifestPathname.replace(/^\/eat\/?/, '/');
+  }
+  if (manifestPathname === '/manifest.json' || manifestPathname === '/manifest.webmanifest') {
     // vite-plugin-pwa генерирует manifest.webmanifest
     const manifestPath = path.join(BUILD_DIR, 'manifest.webmanifest');
     const manifestPathAlt = path.join(BUILD_DIR, 'manifest.json');
@@ -277,8 +287,13 @@ const server = http.createServer((req, res) => {
   }
 
   // Иконки
-  if (pathname.startsWith('/icons/')) {
-    const iconPath = path.join(BUILD_DIR, pathname);
+  // Обрабатываем как /icons/..., так и /eat/icons/...
+  let iconPathname = pathname;
+  if (iconPathname.startsWith('/eat')) {
+    iconPathname = iconPathname.replace(/^\/eat\/?/, '/');
+  }
+  if (iconPathname.startsWith('/icons/')) {
+    const iconPath = path.join(BUILD_DIR, iconPathname);
     fs.access(iconPath, fs.constants.F_OK, (err) => {
       if (err) {
         console.error(`[ERROR] Icon not found: ${pathname} -> ${iconPath}`);
@@ -308,7 +323,15 @@ const server = http.createServer((req, res) => {
   }
 
   // Обработка пути для SPA
+  // Если запрос приходит с путём /eat или /eat/, убираем его для прямого доступа
   let filePath = pathname;
+  if (filePath.startsWith('/eat')) {
+    filePath = filePath.replace(/^\/eat\/?/, '/');
+    if (filePath === '') {
+      filePath = '/';
+    }
+  }
+  
   if (filePath === '/') {
     filePath = '/index.html';
   }
