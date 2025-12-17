@@ -212,7 +212,7 @@ const server = http.createServer((req, res) => {
           'Content-Type': 'application/javascript',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Service-Worker-Allowed': '/',
+          'Service-Worker-Allowed': '/eat/',
           'X-Content-Type-Options': 'nosniff',
         };
         res.writeHead(200, headers);

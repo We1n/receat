@@ -36,25 +36,40 @@
   box-sizing: border-box;
 }
 
+html {
+  height: -webkit-fill-available; /* Для iOS Safari */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   background-attachment: fixed;
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* Для iOS Safari */
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  padding-bottom: 0; /* Убираем нижний padding, чтобы навигация могла прилипнуть */
+  box-sizing: border-box;
+  margin: 0;
+  position: relative;
+  overflow-x: hidden;
 }
 
 #app {
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
-  padding-bottom: calc(80px + max(20px, env(safe-area-inset-bottom)));
+  padding-bottom: calc(90px + max(20px, env(safe-area-inset-bottom)));
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* Для iOS Safari */
   position: relative;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .screen {
@@ -639,11 +654,20 @@ input::placeholder {
 #products-in-list,
 #wishlist-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-bottom: 20px;
   align-items: start;
   justify-content: center;
+}
+
+/* Для больших экранов используем 3 колонки */
+@media (min-width: 480px) {
+  #products-out-list,
+  #products-in-list,
+  #wishlist-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* Product Item Styles */
@@ -984,6 +1008,16 @@ form label .hint {
   }
 }
 
+/* Для очень маленьких экранов используем 2 колонки */
+@media (max-width: 360px) {
+  #products-out-list,
+  #products-in-list,
+  #wishlist-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
 @media (min-width: 640px) {
   #products-out-list,
   #products-in-list,
@@ -1030,7 +1064,25 @@ form label .hint {
 @media (max-width: 640px) {
   #app {
     padding: 12px;
-    padding-bottom: calc(80px + max(12px, env(safe-area-inset-bottom)));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: calc(90px + max(12px, env(safe-area-inset-bottom)));
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+
+  /* Усиливаем стили для bottom-nav на мобильных */
+  #bottom-nav.bottom-nav,
+  nav#bottom-nav,
+  .bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
   }
 
   header {
@@ -1058,7 +1110,7 @@ form label .hint {
   #products-out-list,
   #products-in-list,
   #wishlist-list {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     justify-content: stretch;
   }
@@ -1099,7 +1151,6 @@ form label .hint {
     width: 16px;
     height: 16px;
   }
-}
 
   .recipe-item {
     padding: 12px;
@@ -1146,6 +1197,7 @@ form label .hint {
 }
 
 /* Bottom Navigation - Best Practices */
+/* Убеждаемся, что навигация всегда прилипает к низу экрана */
 #bottom-nav.bottom-nav,
 nav#bottom-nav,
 .bottom-nav {
@@ -1153,8 +1205,13 @@ nav#bottom-nav,
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
+  top: auto !important;
   max-width: 600px !important;
-  margin: 0 auto !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
   background: var(--surface) !important;
   border-top: 1px solid var(--border) !important;
   display: flex !important;
@@ -1163,13 +1220,19 @@ nav#bottom-nav,
   flex-wrap: nowrap !important;
   justify-content: space-around !important;
   align-items: center !important;
-  padding: 8px 0 !important;
-  padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  padding: 12px 0 !important;
+  padding-left: max(0px, env(safe-area-inset-left)) !important;
+  padding-right: max(0px, env(safe-area-inset-right)) !important;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  padding-top: 12px !important;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08) !important;
-  z-index: 1000 !important;
+  z-index: 99999 !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  width: 100% !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* Гарантируем горизонтальное расположение элементов */
@@ -1197,7 +1260,19 @@ nav#bottom-nav,
 }
 
 .bottom-nav.hidden {
-  display: none;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Гарантируем, что навигация всегда видна, когда не скрыта */
+.bottom-nav:not(.hidden) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 99999 !important;
 }
 
 .nav-item {

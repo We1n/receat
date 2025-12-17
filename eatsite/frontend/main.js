@@ -7,20 +7,30 @@
  * - Нет локального кеширования данных
  */
 
+// Импортируем стили
+import './styles.css';
+
 // Используем относительные пути для API (проксируется через server.js)
 // Для продакшена можно задать через переменные окружения VITE_API_URL и VITE_WS_URL
 const API_BASE = import.meta.env.VITE_API_URL || '';
 // WebSocket использует текущий хост с заменой протокола
-// В продакшене WebSocket проксируется через nginx
+// WebSocket подключается напрямую к backend на порт 3000
 const getWSBase = () => {
   if (import.meta.env.VITE_WS_URL) {
     return import.meta.env.VITE_WS_URL;
   }
   // Определяем WebSocket URL на основе текущего хоста
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host.split(':')[0]; // Убираем порт
-  // WebSocket подключается через nginx к /ws, nginx проксирует на backend:3000
-  return `${protocol}//${host}/ws`;
+  const hostname = window.location.hostname; // Только hostname без порта
+  // WebSocket подключается напрямую к backend на порт 3000
+  // Для HTTPS используем тот же hostname (nginx проксирует), для HTTP - добавляем порт 3000
+  if (protocol === 'wss:') {
+    // HTTPS - nginx проксирует WebSocket, используем тот же hostname
+    return `${protocol}//${hostname}/ws`;
+  } else {
+    // HTTP - подключаемся напрямую к backend на порт 3000
+    return `${protocol}//${hostname}:3000/ws`;
+  }
 };
 const WS_BASE = getWSBase();
 
@@ -56,16 +66,6 @@ function init() {
   // Инициализируем DOM элементы
   initDOMElements();
   
-  // Устанавливаем стили для горизонтальной навигации
-  const bottomNav = document.getElementById('bottom-nav');
-  if (bottomNav) {
-    bottomNav.style.display = 'flex';
-    bottomNav.style.flexDirection = 'row';
-    bottomNav.style.flexWrap = 'nowrap';
-    bottomNav.style.justifyContent = 'space-around';
-    bottomNav.style.alignItems = 'center';
-  }
-  
   // Проверяем сохранённый токен
   clientToken = localStorage.getItem('client_token');
   workspaceId = localStorage.getItem('workspace_id');
@@ -75,6 +75,7 @@ function init() {
   } else {
     showScreen('publicLanding');
     // Hide bottom nav on public landing
+    const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) {
       bottomNav.classList.add('hidden');
     }
@@ -927,12 +928,6 @@ function showScreen(screenName) {
       bottomNav.classList.add('hidden');
     } else {
       bottomNav.classList.remove('hidden');
-      // Гарантируем горизонтальное расположение
-      bottomNav.style.display = 'flex';
-      bottomNav.style.flexDirection = 'row';
-      bottomNav.style.flexWrap = 'nowrap';
-      bottomNav.style.justifyContent = 'space-around';
-      bottomNav.style.alignItems = 'center';
       // Update active state based on screen
       if (screenName === 'menuScreen') {
         updateBottomNav('products');

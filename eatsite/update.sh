@@ -68,3 +68,6 @@ echo "   pm2 logs eatsite-backend --lines 50"
 echo "   pm2 logs eatsite-frontend --lines 50"
 echo "   pm2 status"
 
+
+
+

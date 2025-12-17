@@ -6,8 +6,20 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      // Указываем base path для правильной генерации путей
+      base: '/eat/',
+      // Принудительное обновление Service Worker
+      strategies: 'generateSW',
       workbox: {
+        // Принудительно обновляем кэш при каждой сборке
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
+        // Убеждаемся, что пути генерируются с учетом base
+        navigateFallback: '/eat/index.html',
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        // Указываем, что precache должен использовать base path
+        dontCacheBustURLsMatching: /\.\w{8}\./,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
