@@ -13,11 +13,11 @@
   --danger-dark: #dc2626;
   --warning: #f59e0b;
   --background: #e2e8f0;
-  --surface: #ffffff;
-  --surface-elevated: #f8fafc;
+  --surface: #f1f5f9;
+  --surface-elevated: #e2e8f0;
   --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #475569;
+  --text-secondary: #1e293b;
+  --text-muted: #334155;
   --border: #94a3b8;
   --border-light: #cbd5e1;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -141,7 +141,7 @@ header {
 
 /* Улучшаем контраст header в светлой теме */
 :root:not([data-theme="dark"]) header {
-  background: #ffffff;
+  background: #f1f5f9;
   border-color: #94a3b8;
   border-width: 2px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
@@ -218,6 +218,15 @@ header {
   height: 40px;
   position: relative;
   box-shadow: var(--shadow-sm);
+}
+
+/* Улучшаем контраст кнопок в header в светлой теме */
+:root:not([data-theme="dark"]) .faq-btn,
+:root:not([data-theme="dark"]) .switch-workspace-btn,
+:root:not([data-theme="dark"]) .theme-toggle-btn {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 .faq-btn:hover,
@@ -412,7 +421,7 @@ header h1, header h2 {
 
 /* Улучшаем контраст навигации табов в светлой теме */
 :root:not([data-theme="dark"]) .tab-navigation {
-  background: #ffffff;
+  background: #f1f5f9;
   border-color: #94a3b8;
   border-width: 2px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
@@ -824,9 +833,9 @@ input::placeholder {
 
 /* Улучшаем контраст карточек в светлой теме */
 :root:not([data-theme="dark"]) .product-item {
-  background: #ffffff;
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 :root:not([data-theme="dark"]) .product-item:hover {
