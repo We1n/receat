@@ -162,12 +162,6 @@ header {
   font-weight: 700;
 }
 
-.menu-header h1 {
-  margin: 0;
-  font-size: 28px;
-  flex: 1;
-}
-
 .header-actions {
   display: flex;
   gap: 8px;
@@ -179,7 +173,14 @@ header {
   width: 20px;
   height: 20px;
   stroke: currentColor;
+  stroke-width: 2.5;
   flex-shrink: 0;
+}
+
+/* Улучшаем контраст иконок в светлой теме */
+:root:not([data-theme="dark"]) .icon {
+  stroke-width: 2.5;
+  opacity: 0.9;
 }
 
 .icon-inline {
@@ -460,8 +461,15 @@ header h1, header h2 {
   width: 20px;
   height: 20px;
   stroke: currentColor;
+  stroke-width: 2.5;
   transition: var(--transition);
   flex-shrink: 0;
+}
+
+/* Улучшаем контраст иконок табов в светлой теме */
+:root:not([data-theme="dark"]) .tab-icon {
+  stroke-width: 2.5;
+  opacity: 0.9;
 }
 
 .tab-label {
@@ -830,11 +838,11 @@ input::placeholder {
 }
 
 .product-name {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 14px;
   color: var(--text-primary);
-  line-height: 1.3;
-  margin-bottom: 4px;
+  line-height: 1.4;
+  margin-bottom: 6px;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
@@ -845,17 +853,37 @@ input::placeholder {
   text-overflow: ellipsis;
 }
 
+/* Улучшаем контраст названия в светлой теме */
+:root:not([data-theme="dark"]) .product-name {
+  color: #0f172a;
+  font-weight: 700;
+}
+
 .product-category {
-  color: var(--text-secondary);
-  font-size: 10px;
+  color: var(--text-primary);
+  font-size: 11px;
   margin: 0;
-  padding: 2px 6px;
-  background: var(--background);
+  padding: 4px 8px;
+  background: var(--border-light);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   display: inline-block;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   align-self: flex-start;
+}
+
+/* Улучшаем контраст категории в светлой теме */
+:root:not([data-theme="dark"]) .product-category {
+  color: #475569;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+[data-theme="dark"] .product-category {
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border-color: var(--border);
 }
 
 .product-info {
@@ -868,10 +896,16 @@ input::placeholder {
 }
 
 .product-quantity {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
-  line-height: 1.3;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* Улучшаем контраст количества в светлой теме */
+:root:not([data-theme="dark"]) .product-quantity {
+  color: #475569;
 }
 
 /* Form Styles */
@@ -1822,7 +1856,7 @@ nav#bottom-nav,
 }
 
 .price-value {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--primary);
   display: flex;
@@ -1830,23 +1864,40 @@ nav#bottom-nav,
   gap: 4px;
 }
 
+/* Улучшаем контраст цены в светлой теме */
+:root:not([data-theme="dark"]) .price-value {
+  color: #4f46e5;
+}
+
 .price-value::before {
   content: '₽';
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.9;
   margin-right: 2px;
+  font-weight: 600;
 }
 
 .price-store {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Улучшаем контраст магазина в светлой теме */
+:root:not([data-theme="dark"]) .price-store {
+  color: #475569;
 }
 
 .price-stores-count {
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: 11px;
+  color: var(--text-secondary);
   font-style: italic;
+  font-weight: 500;
+}
+
+/* Улучшаем контраст количества магазинов в светлой теме */
+:root:not([data-theme="dark"]) .price-stores-count {
+  color: #64748b;
 }
 
 .price-btn {
