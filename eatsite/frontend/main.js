@@ -12,7 +12,8 @@ import './styles.css';
 
 // Используем относительные пути для API (проксируется через server.js)
 // Для продакшена можно задать через переменные окружения VITE_API_URL и VITE_WS_URL
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// Если VITE_API_URL не задан, используем '/eat' для продакшена (когда base = '/eat/')
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.MODE === 'production' ? '/eat' : '');
 // WebSocket использует текущий хост с заменой протокола
 // WebSocket подключается напрямую к backend на порт 3000
 const getWSBase = () => {
@@ -322,6 +323,13 @@ async function loadInitialState() {
 
     // Обрабатываем состояние
     if (stateResponse.ok) {
+      const contentType = stateResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await stateResponse.text();
+        console.error('Expected JSON but got:', contentType, text.substring(0, 200));
+        throw new Error(`Server returned ${contentType} instead of JSON. Response: ${text.substring(0, 100)}`);
+      }
+      
       const data = await stateResponse.json();
       currentProducts = data.products || [];
       currentRecipes = data.recipes || [];
@@ -342,11 +350,13 @@ async function loadInitialState() {
         renderBaseBasket();
       });
     } else {
-      throw new Error('Failed to load state');
+      const text = await stateResponse.text();
+      console.error('State response error:', stateResponse.status, stateResponse.statusText, text.substring(0, 200));
+      throw new Error(`Failed to load state: ${stateResponse.status} ${stateResponse.statusText}`);
     }
   } catch (error) {
     console.error('Failed to load initial state:', error);
-    alert('Ошибка загрузки данных');
+    alert(`Ошибка загрузки данных: ${error.message}`);
   }
 }
 

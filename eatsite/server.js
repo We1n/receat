@@ -142,7 +142,8 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith('/api/') || pathname.startsWith('/workspace/') || 
       pathname.startsWith('/products') || pathname.startsWith('/recipes') || 
       pathname.startsWith('/categories') || pathname.startsWith('/export') || 
-      pathname.startsWith('/health') || pathname.startsWith('/base-basket')) {
+      pathname.startsWith('/health') || pathname.startsWith('/base-basket') ||
+      pathname.startsWith('/stores') || pathname.startsWith('/prices')) {
     const apiPath = pathname + (parsedUrl.search || '');
     console.log(`[PROXY] Proxying ${req.method} ${req.url} -> localhost:${BACKEND_PORT}${apiPath}`);
     
