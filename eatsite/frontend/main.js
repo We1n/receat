@@ -69,6 +69,9 @@ function init() {
   // Инициализируем DOM элементы
   initDOMElements();
   
+  // Инициализируем тему
+  initTheme();
+  
   // Проверяем сохранённый токен
   clientToken = localStorage.getItem('client_token');
   workspaceId = localStorage.getItem('workspace_id');
@@ -87,7 +90,24 @@ function init() {
   setupEventListeners();
 }
 
+// Инициализация темы
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+}
+
+// Переключение темы
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+}
+
 function setupEventListeners() {
+  // Theme toggle
+  document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
+  
   // Join workspace
   document.getElementById('join-btn')?.addEventListener('click', async () => {
     const input = document.getElementById('workspace-input');
@@ -244,11 +264,11 @@ async function joinWorkspace(id) {
       connectToWorkspace(workspaceId, clientToken);
     } else {
       const maxClients = data.error?.match(/max (\d+) clients/)?.[1] || '2';
-      alert(`Workspace переполнен (максимум ${maxClients} клиентов)`);
+      showToast(`Workspace переполнен (максимум ${maxClients} клиентов)`, 'warning', 5000);
     }
   } catch (error) {
     console.error('Failed to join workspace:', error);
-    alert('Ошибка подключения к workspace');
+    showToast('Ошибка подключения к workspace', 'error', 5000);
   }
 }
 
@@ -290,8 +310,82 @@ function getAuthHeaders() {
   };
 }
 
+// Toast Notifications
+function showToast(message, type = 'info', duration = 3000) {
+  const container = getOrCreateToastContainer();
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icons = {
+    success: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    error: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+    info: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+    warning: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'
+  };
+  
+  toast.innerHTML = `
+    ${icons[type] || icons.info}
+    <div class="toast-content">${message}</div>
+    <button class="toast-close" aria-label="Закрыть">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  `;
+  
+  const closeBtn = toast.querySelector('.toast-close');
+  const closeToast = () => {
+    toast.classList.add('slide-out');
+    setTimeout(() => toast.remove(), 300);
+  };
+  
+  closeBtn.addEventListener('click', closeToast);
+  container.appendChild(toast);
+  
+  if (duration > 0) {
+    setTimeout(closeToast, duration);
+  }
+  
+  return toast;
+}
+
+function getOrCreateToastContainer() {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+// Skeleton Loaders
+function showSkeletonLoaders(containerId, count = 6) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  container.innerHTML = Array(count).fill(0).map(() => `
+    <div class="skeleton-product">
+      <div class="skeleton-line skeleton-title"></div>
+      <div class="skeleton-line skeleton-category short"></div>
+      <div class="skeleton-actions">
+        <div class="skeleton skeleton-button"></div>
+        <div class="skeleton skeleton-button"></div>
+        <div class="skeleton skeleton-button"></div>
+        <div class="skeleton skeleton-button"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
 async function loadInitialState() {
   try {
+    // Показываем skeleton loaders
+    showSkeletonLoaders('products-out-list', 6);
+    showSkeletonLoaders('products-in-list', 6);
+    
     // Загружаем категории, состояние, магазины и цены параллельно для максимальной скорости
     const [categoriesResponse, stateResponse, storesResponse, pricesResponse] = await Promise.all([
       fetch(`${API_BASE}/categories`),
@@ -356,7 +450,7 @@ async function loadInitialState() {
     }
   } catch (error) {
     console.error('Failed to load initial state:', error);
-    alert(`Ошибка загрузки данных: ${error.message}`);
+    showToast(`Ошибка загрузки данных: ${error.message}`, 'error', 5000);
   }
 }
 
@@ -488,7 +582,7 @@ function renderProductList(containerId, products) {
       const storeCount = Object.keys(priceData.stores || {}).length;
       priceDisplay = `
         <div class="product-price">
-          <span class="price-value">💰 ${bestPrice.toFixed(2)} ₽</span>
+          <span class="price-value">${bestPrice.toFixed(2)} ₽</span>
           <span class="price-store">${storeName}</span>
           ${storeCount > 1 ? `<span class="price-stores-count">(${storeCount} магазинов)</span>` : ''}
         </div>
@@ -736,7 +830,7 @@ function openProductForm(productId = null) {
     const unit = document.getElementById('edit-unit').value.trim();
 
     if (!name || !category) {
-      alert('Заполните название и категорию');
+      showToast('Заполните название и категорию', 'warning');
       return;
     }
     
@@ -744,7 +838,7 @@ function openProductForm(productId = null) {
     if (quantity) {
       const validation = validateQuantity(quantity, unit);
       if (!validation.valid) {
-        alert(validation.message);
+        showToast(validation.message, 'warning');
         return;
       }
     }
@@ -767,6 +861,7 @@ function openProductForm(productId = null) {
         quantity: quantity || null,
         unit: unit || null
       });
+      showToast(productId ? 'Продукт обновлён' : 'Продукт создан', 'success');
     }
     showScreen('menuScreen');
     updateBottomNav('products');
@@ -791,9 +886,10 @@ window.deleteProductQuick = async function(productId, productName) {
       if (result && result.alreadyDeleted) {
         console.log('Product was already deleted, list updated locally');
       }
+      showToast('Продукт удалён', 'success');
     } catch (error) {
-      // Ошибка уже обработана в deleteProduct с alert (если нужно)
       console.error('Ошибка удаления:', error);
+      showToast('Ошибка удаления продукта', 'error');
     }
   }
 };
@@ -811,7 +907,7 @@ window.toggleProductStock = async function(productId) {
     // Список обновится автоматически через WebSocket
   } catch (error) {
     console.error('Ошибка переключения статуса:', error);
-    alert('Ошибка обновления статуса продукта');
+    showToast('Ошибка обновления статуса продукта', 'error');
   }
 };
 
@@ -832,7 +928,8 @@ async function createProduct(productData) {
     return await response.json();
   } catch (error) {
     console.error('Failed to create product:', error);
-    alert('Ошибка создания продукта');
+    showToast('Ошибка создания продукта', 'error');
+    throw error;
   }
 }
 
@@ -853,7 +950,8 @@ async function updateProduct(productId, updates) {
     return await response.json();
   } catch (error) {
     console.error('Failed to update product:', error);
-    alert('Ошибка обновления продукта');
+    showToast('Ошибка обновления продукта', 'error');
+    throw error;
   }
 }
 
