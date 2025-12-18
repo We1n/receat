@@ -1,0 +1,36 @@
+{
+  "stores": [
+    {
+      "id": "yarkie",
+      "name": "Ярче",
+      "priority": 1,
+      "description": "Сеть магазинов Ярче"
+    },
+    {
+      "id": "pyaterochka",
+      "name": "Пятёрочка",
+      "priority": 2,
+      "description": "Сеть магазинов Пятёрочка"
+    },
+    {
+      "id": "magnit",
+      "name": "Магнит",
+      "priority": 3,
+      "description": "Сеть магазинов Магнит"
+    },
+    {
+      "id": "abrikos",
+      "name": "Абрикос",
+      "priority": 4,
+      "description": "Сеть магазинов Абрикос"
+    },
+    {
+      "id": "fixprice",
+      "name": "Фикс Прайс",
+      "priority": 5,
+      "description": "Сеть магазинов Фикс Прайс"
+    }
+  ],
+  "default_store": "yarkie"
+}
+

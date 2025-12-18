@@ -289,31 +289,41 @@ function getAuthHeaders() {
 
 async function loadInitialState() {
   try {
-    // Загружаем категории
-    const categoriesResponse = await fetch(`${API_BASE}/categories`);
+    // Загружаем категории и состояние параллельно для максимальной скорости
+    const [categoriesResponse, stateResponse] = await Promise.all([
+      fetch(`${API_BASE}/categories`),
+      fetch(`${API_BASE}/workspace/${workspaceId}/state`, {
+        headers: getAuthHeaders()
+      })
+    ]);
+
+    // Обрабатываем категории
     if (categoriesResponse.ok) {
       productCategories = await categoriesResponse.json();
       populateCategorySelect();
     }
 
-    // Загружаем состояние
-    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/state`, {
-      headers: getAuthHeaders()
-    });
-
-    if (response.ok) {
-      const data = await response.json();
+    // Обрабатываем состояние
+    if (stateResponse.ok) {
+      const data = await stateResponse.json();
       currentProducts = data.products || [];
       currentRecipes = data.recipes || [];
       wishlistProducts = currentProducts.filter(p => p.wishlist) || [];
-      await loadBaseBasket();
-      renderProducts();
-      renderRecipes();
-      renderWishlist();
-      renderBaseBasket();
+      
+      // Показываем экран сразу для мгновенной отрисовки
       showScreen('menuScreen');
       switchTab('need');
       updateBottomNav('products');
+      
+      // Рендерим основные элементы сразу
+      renderProducts();
+      renderRecipes();
+      renderWishlist();
+      
+      // Загружаем и рендерим базовую корзину асинхронно (не блокируем основной интерфейс)
+      loadBaseBasket().then(() => {
+        renderBaseBasket();
+      });
     } else {
       throw new Error('Failed to load state');
     }

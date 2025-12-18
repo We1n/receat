@@ -24,7 +24,7 @@ from src.logger import setup_logger
 logger = setup_logger('bot', log_file=os.path.join('logs', 'bot.log'))
 
 from telegram import Update
-from telegram.ext import Application, ContextTypes
+from telegram.ext import Application, ContextTypes, CommandHandler
 
 from src.config import Config
 from src.services.data_service import DataService
@@ -78,7 +78,12 @@ async def setup_handlers(application: Application) -> None:
     # Регистрируем обработчик продуктов в роутере
     callback_router.register_handler("products", product_handler)
     logger.info("Обработчик продуктов зарегистрирован")
-
+    
+    # Регистрируем обработчик цен в роутере
+    from src.ui.handlers.price_handlers import price_handler
+    callback_router.register_handler("prices", price_handler)
+    logger.info("Обработчик цен зарегистрирован")
+    
     # LEGACY: Удалена регистрация старых обработчиков
     # setup_collaborative_handlers(application, data_service, callback_handler)
     # register_product_handlers(application)
@@ -92,6 +97,14 @@ async def setup_handlers(application: Application) -> None:
     recipe_conv_handler = create_recipe_conversation_handler()
     application.add_handler(recipe_conv_handler)
     logger.info("ConversationHandler для рецептов зарегистрирован")
+    
+    # Регистрируем ConversationHandler для цен
+    from src.ui.handlers.price_handlers import create_price_conversation_handler, price_command, prices_command
+    price_conv_handler = create_price_conversation_handler()
+    application.add_handler(price_conv_handler)
+    application.add_handler(CommandHandler("price", price_command))
+    application.add_handler(CommandHandler("prices", prices_command))
+    logger.info("ConversationHandler для цен зарегистрирован")
     
     # Регистрируем единый обработчик колбэков
     from telegram.ext import CallbackQueryHandler

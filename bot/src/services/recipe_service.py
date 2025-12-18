@@ -204,9 +204,9 @@ class RecipeService:
             amount = ingredient.get("amount", 0)
             unit = ingredient.get("unit", "")
             
-            # Получаем цену ингредиента
+            # Получаем лучшую цену ингредиента (с учетом всех магазинов)
             price_data = self.price_service.get_price(ingredient_name)
-            if price_data:
+            if price_data and price_data.get("price") is not None:
                 price = price_data["price"]
                 # Конвертируем единицы измерения если нужно
                 if unit == "кг" and ingredient.get("unit", "") == "г":
