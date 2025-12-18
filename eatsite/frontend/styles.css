@@ -136,6 +136,14 @@ header {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+}
+
+/* Улучшаем контраст header в светлой теме */
+:root:not([data-theme="dark"]) header {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .menu-header {
@@ -144,6 +152,14 @@ header {
   align-items: center;
   margin-bottom: 0;
   padding: 16px 20px;
+}
+
+.menu-header h1 {
+  margin: 0;
+  font-size: 28px;
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
 .menu-header h1 {
@@ -178,19 +194,29 @@ header {
 .faq-btn,
 .switch-workspace-btn,
 .theme-toggle-btn {
-  background: transparent;
+  background: var(--surface);
   border: 2px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px;
   cursor: pointer;
   transition: var(--transition);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 40px;
   height: 40px;
   position: relative;
+  box-shadow: var(--shadow-sm);
+}
+
+.faq-btn:hover,
+.switch-workspace-btn:hover,
+.theme-toggle-btn:hover {
+  background: var(--surface-elevated);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: var(--shadow);
 }
 
 .theme-toggle-btn .icon-moon {
@@ -371,6 +397,14 @@ header h1, header h2 {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  border: 1px solid var(--border);
+}
+
+/* Улучшаем контраст навигации табов в светлой теме */
+:root:not([data-theme="dark"]) .tab-navigation {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .tab-navigation::-webkit-scrollbar {
@@ -390,7 +424,7 @@ header h1, header h2 {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   position: relative;
@@ -402,10 +436,14 @@ header h1, header h2 {
 }
 
 .tab-btn:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(99, 102, 241, 0.1);
   color: var(--primary);
   transform: none;
   box-shadow: none;
+}
+
+[data-theme="dark"] .tab-btn:hover {
+  background: rgba(129, 140, 248, 0.15);
 }
 
 .tab-btn.active {
@@ -748,7 +786,7 @@ input::placeholder {
   flex-direction: column;
   box-shadow: var(--shadow);
   transition: var(--transition);
-  border: 1px solid var(--border-light);
+  border: 2px solid var(--border);
   position: relative;
   overflow: hidden;
   gap: 6px;
@@ -756,6 +794,18 @@ input::placeholder {
   justify-content: flex-start;
   width: 100%;
   max-width: 100%;
+}
+
+/* Улучшаем контраст карточек в светлой теме */
+:root:not([data-theme="dark"]) .product-item {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+:root:not([data-theme="dark"]) .product-item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.15);
 }
 
 .product-item::before {
