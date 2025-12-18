@@ -41,6 +41,8 @@ let ws = null;
 let currentProducts = [];
 let currentRecipes = [];
 let baseBasket = [];
+let currentPrices = {};
+let stores = [];
 
 // DOM Elements (инициализируются после загрузки DOM)
 let screens = {};
@@ -289,18 +291,33 @@ function getAuthHeaders() {
 
 async function loadInitialState() {
   try {
-    // Загружаем категории и состояние параллельно для максимальной скорости
-    const [categoriesResponse, stateResponse] = await Promise.all([
+    // Загружаем категории, состояние, магазины и цены параллельно для максимальной скорости
+    const [categoriesResponse, stateResponse, storesResponse, pricesResponse] = await Promise.all([
       fetch(`${API_BASE}/categories`),
       fetch(`${API_BASE}/workspace/${workspaceId}/state`, {
         headers: getAuthHeaders()
-      })
+      }),
+      fetch(`${API_BASE}/stores`),
+      fetch(`${API_BASE}/prices`, {
+        headers: getAuthHeaders()
+      }).catch(() => ({ ok: false })) // Если цены не загрузились, продолжаем
     ]);
 
     // Обрабатываем категории
     if (categoriesResponse.ok) {
       productCategories = await categoriesResponse.json();
       populateCategorySelect();
+    }
+
+    // Обрабатываем магазины
+    if (storesResponse.ok) {
+      const storesData = await storesResponse.json();
+      stores = storesData.stores || [];
+    }
+
+    // Обрабатываем цены
+    if (pricesResponse.ok) {
+      currentPrices = await pricesResponse.json();
     }
 
     // Обрабатываем состояние
@@ -382,6 +399,44 @@ function handleWebSocketMessage(message) {
       currentRecipes = currentRecipes.filter(r => r.id !== message.data.id);
       renderRecipes();
       break;
+    case 'price_updated':
+      if (message.data && message.data.product_name) {
+        currentPrices[message.data.product_name] = message.data.price_data;
+        renderProducts(); // Перерисовываем продукты для обновления цен
+      }
+      break;
+    case 'price_deleted':
+      if (message.data && message.data.product_name) {
+        if (message.data.store_id) {
+          // Удалена цена в конкретном магазине
+          if (currentPrices[message.data.product_name]) {
+            delete currentPrices[message.data.product_name].stores[message.data.store_id];
+            // Обновляем best_price и best_store
+            const stores = currentPrices[message.data.product_name].stores;
+            let bestPrice = null;
+            let bestStore = null;
+            for (const [sid, storeData] of Object.entries(stores)) {
+              const price = storeData.price;
+              if (price !== null && price !== undefined) {
+                if (bestPrice === null || price < bestPrice) {
+                  bestPrice = price;
+                  bestStore = sid;
+                }
+              }
+            }
+            currentPrices[message.data.product_name].best_price = bestPrice;
+            currentPrices[message.data.product_name].best_store = bestStore;
+            if (Object.keys(stores).length === 0) {
+              delete currentPrices[message.data.product_name];
+            }
+          }
+        } else {
+          // Удалены все цены продукта
+          delete currentPrices[message.data.product_name];
+        }
+        renderProducts(); // Перерисовываем продукты для обновления цен
+      }
+      break;
   }
 }
 
@@ -408,12 +463,35 @@ function renderProductList(containerId, products) {
     const toggleTitle = isInStock ? 'Убрать из "В наличии"' : 'Добавить в "В наличии"';
     const toggleClass = isInStock ? 'toggle-stock-btn remove-btn' : 'toggle-stock-btn add-btn';
     
+    // Получаем цену продукта
+    const productName = product.name.toLowerCase();
+    const priceData = currentPrices[productName];
+    let priceDisplay = '';
+    
+    if (priceData && priceData.best_price !== null && priceData.best_price !== undefined) {
+      const bestPrice = priceData.best_price;
+      const bestStoreId = priceData.best_store;
+      const bestStore = stores.find(s => s.id === bestStoreId);
+      const storeName = bestStore ? bestStore.name : bestStoreId;
+      
+      // Показываем лучшую цену и количество магазинов
+      const storeCount = Object.keys(priceData.stores || {}).length;
+      priceDisplay = `
+        <div class="product-price">
+          <span class="price-value">💰 ${bestPrice.toFixed(2)} ₽</span>
+          <span class="price-store">${storeName}</span>
+          ${storeCount > 1 ? `<span class="price-stores-count">(${storeCount} магазинов)</span>` : ''}
+        </div>
+      `;
+    }
+    
     return `
     <div class="product-item" data-id="${product.id}">
       <div class="product-info">
         <span class="product-name">${product.name}</span>
         <span class="product-category">${product.category}</span>
         ${product.quantity ? `<span class="product-quantity">${product.quantity} ${product.unit || ''}</span>` : ''}
+        ${priceDisplay}
       </div>
       <div class="product-actions">
         <button class="${toggleClass} icon-btn" onclick="toggleProductStock('${product.id}')" title="${toggleTitle}" aria-label="${toggleTitle}">
@@ -427,6 +505,12 @@ function renderProductList(containerId, products) {
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
           `}
+        </button>
+        <button class="price-btn icon-btn" onclick="openPriceDialog('${product.id}', '${product.name.replace(/'/g, "\\'")}')" title="Установить цену" aria-label="Установить цену">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
         </button>
         <button class="edit-btn icon-btn" onclick="editProduct('${product.id}')" title="Редактировать" aria-label="Редактировать">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1247,6 +1331,174 @@ function showFAQ() {
     </div>
   `;
   document.body.appendChild(modal);
+}
+
+// Price management functions
+window.openPriceDialog = function(productId, productName) {
+  const product = currentProducts.find(p => p.id === productId);
+  if (!product) return;
+  
+  const productNameLower = productName.toLowerCase();
+  const priceData = currentPrices[productNameLower];
+  
+  // Создаем модальное окно для установки цены
+  const modal = document.createElement('div');
+  modal.className = 'price-modal';
+  modal.innerHTML = `
+    <div class="price-modal-content">
+      <header>
+        <h2>💰 Установить цену: ${productName}</h2>
+        <button class="close-btn" onclick="this.closest('.price-modal').remove()">✕</button>
+      </header>
+      <div class="price-modal-body">
+        <div class="price-form">
+          <label>
+            <span>Магазин:</span>
+            <select id="price-store-select">
+              ${stores.map(store => `<option value="${store.id}">${store.name}</option>`).join('')}
+            </select>
+          </label>
+          <label>
+            <span>Цена (₽):</span>
+            <input type="number" id="price-value-input" step="0.01" min="0" placeholder="0.00">
+          </label>
+        </div>
+        ${priceData && Object.keys(priceData.stores || {}).length > 0 ? `
+          <div class="price-list">
+            <h3>Текущие цены:</h3>
+            <ul>
+              ${Object.entries(priceData.stores).map(([storeId, storeData]) => {
+                const store = stores.find(s => s.id === storeId);
+                const storeName = store ? store.name : storeId;
+                const isBest = storeId === priceData.best_store;
+                return `
+                  <li class="${isBest ? 'best-price' : ''}">
+                    <span class="store-name">${storeName}:</span>
+                    <span class="price-value">${storeData.price.toFixed(2)} ₽</span>
+                    ${isBest ? '<span class="best-badge">🎯 Лучшая</span>' : ''}
+                    <button class="delete-price-btn" onclick="deletePrice('${productNameLower}', '${storeId}')">🗑️</button>
+                  </li>
+                `;
+              }).join('')}
+            </ul>
+            ${priceData.best_price !== null ? `
+              <div class="best-price-info">
+                🎯 Лучшая цена: <strong>${priceData.best_price.toFixed(2)} ₽</strong> 
+                в <strong>${stores.find(s => s.id === priceData.best_store)?.name || priceData.best_store}</strong>
+              </div>
+            ` : ''}
+          </div>
+        ` : '<p class="no-prices">Цены не установлены</p>'}
+      </div>
+      <div class="price-modal-actions">
+        <button id="save-price-btn" class="save-btn">💾 Сохранить цену</button>
+        <button class="cancel-btn" onclick="this.closest('.price-modal').remove()">Отмена</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Обработчик сохранения
+  document.getElementById('save-price-btn').addEventListener('click', async () => {
+    const storeId = document.getElementById('price-store-select').value;
+    const priceValue = parseFloat(document.getElementById('price-value-input').value);
+    
+    if (isNaN(priceValue) || priceValue < 0) {
+      alert('Введите корректную цену');
+      return;
+    }
+    
+    try {
+      await setPrice(productName, priceValue, storeId);
+      modal.remove();
+    } catch (error) {
+      console.error('Failed to set price:', error);
+      alert('Ошибка установки цены');
+    }
+  });
+};
+
+window.deletePrice = async function(productName, storeId) {
+  if (!confirm('Удалить цену в этом магазине?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/prices/${encodeURIComponent(productName)}?store_id=${storeId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete price');
+    }
+    
+    // Обновляем локальные данные
+    if (currentPrices[productName]) {
+      delete currentPrices[productName].stores[storeId];
+      const stores = currentPrices[productName].stores;
+      if (Object.keys(stores).length === 0) {
+        delete currentPrices[productName];
+      } else {
+        // Пересчитываем лучшую цену
+        let bestPrice = null;
+        let bestStore = null;
+        for (const [sid, storeData] of Object.entries(stores)) {
+          const price = storeData.price;
+          if (price !== null && price !== undefined) {
+            if (bestPrice === null || price < bestPrice) {
+              bestPrice = price;
+              bestStore = sid;
+            }
+          }
+        }
+        currentPrices[productName].best_price = bestPrice;
+        currentPrices[productName].best_store = bestStore;
+      }
+    }
+    
+    renderProducts();
+    
+    // Переоткрываем диалог для обновления списка цен
+    const product = currentProducts.find(p => p.name.toLowerCase() === productName);
+    if (product) {
+      openPriceDialog(product.id, product.name);
+    }
+  } catch (error) {
+    console.error('Failed to delete price:', error);
+    alert('Ошибка удаления цены');
+  }
+};
+
+async function setPrice(productName, price, storeId) {
+  try {
+    const response = await fetch(`${API_BASE}/prices`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        product_name: productName,
+        price: price,
+        store_id: storeId
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to set price');
+    }
+    
+    const priceData = await response.json();
+    currentPrices[productName.toLowerCase()] = priceData;
+    renderProducts();
+    
+    return priceData;
+  } catch (error) {
+    console.error('Failed to set price:', error);
+    throw error;
+  }
 }
 
 // Запуск приложения после загрузки DOM

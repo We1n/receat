@@ -207,11 +207,18 @@ app.post('/workspace/:id/join', (req, res) => {
       products: [],
       recipes: [],
       active_clients: [],
+      prices: {}, // Инициализируем цены
       base_basket: BASE_BASKET // Инициализируем базовую корзину по умолчанию
     };
-  } else if (!workspace.base_basket) {
+  } else {
     // Если у существующего workspace нет базовой корзины, добавляем по умолчанию
-    workspace.base_basket = BASE_BASKET;
+    if (!workspace.base_basket) {
+      workspace.base_basket = BASE_BASKET;
+    }
+    // Если у существующего workspace нет цен, инициализируем
+    if (!workspace.prices) {
+      workspace.prices = {};
+    }
   }
 
   // Проверка лимита клиентов
@@ -559,6 +566,184 @@ app.post('/workspace/:id/init-basket', requireAccess, (req, res) => {
     total: workspace.products.length,
     products: newProducts
   });
+});
+
+// Stores configuration
+app.get('/stores', (req, res) => {
+  try {
+    const storesFile = join(__dirname, 'config', 'stores.json');
+    if (existsSync(storesFile)) {
+      const stores = JSON.parse(readFileSync(storesFile, 'utf-8'));
+      res.json(stores);
+    } else {
+      res.json({ stores: [], default_store: null });
+    }
+  } catch (error) {
+    console.error('Error loading stores:', error);
+    res.status(500).json({ error: 'Failed to load stores' });
+  }
+});
+
+// Prices API
+// Get all prices for workspace
+app.get('/prices', requireAccess, (req, res) => {
+  const workspace = req.workspace;
+  const prices = workspace.prices || {};
+  res.json(prices);
+});
+
+// Get price for specific product
+app.get('/prices/:productName', requireAccess, (req, res) => {
+  const workspace = req.workspace;
+  const prices = workspace.prices || {};
+  const productName = decodeURIComponent(req.params.productName).toLowerCase();
+  const priceData = prices[productName];
+  
+  if (!priceData) {
+    return res.status(404).json({ error: 'Price not found' });
+  }
+  
+  res.json(priceData);
+});
+
+// Set/Update price for product in store
+app.post('/prices', requireAccess, (req, res) => {
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[req.workspaceId];
+  
+  const { product_name, price, store_id } = req.body;
+  
+  if (!product_name || price === undefined || price === null) {
+    return res.status(400).json({ error: 'product_name and price are required' });
+  }
+  
+  const productName = product_name.toLowerCase();
+  const storesFile = join(__dirname, 'config', 'stores.json');
+  let storesConfig = { stores: {}, default_store: 'yarkie' };
+  
+  if (existsSync(storesFile)) {
+    storesConfig = JSON.parse(readFileSync(storesFile, 'utf-8'));
+  }
+  
+  const selectedStoreId = store_id || storesConfig.default_store;
+  
+  // Проверяем, что магазин существует
+  const storeList = storesConfig.stores || [];
+  const storeInfo = storeList.find(s => s.id === selectedStoreId);
+  
+  if (!storeInfo) {
+    return res.status(400).json({ error: `Invalid store_id: ${selectedStoreId}. Available stores: ${storeList.map(s => s.id).join(', ')}` });
+  }
+  
+  // Initialize prices if not exists
+  if (!workspace.prices) {
+    workspace.prices = {};
+  }
+  
+  // Initialize product price data if not exists
+  if (!workspace.prices[productName]) {
+    workspace.prices[productName] = {
+      stores: {},
+      best_store: null,
+      best_price: null
+    };
+  }
+  
+  // Set price in store
+  const currentTime = new Date().toISOString();
+  workspace.prices[productName].stores[selectedStoreId] = {
+    price: parseFloat(price),
+    updated_at: currentTime
+  };
+  
+  // Update best price
+  const stores = workspace.prices[productName].stores;
+  let bestPrice = null;
+  let bestStore = null;
+  
+  for (const [storeId, storeData] of Object.entries(stores)) {
+    const storePrice = storeData.price;
+    if (storePrice !== null && storePrice !== undefined) {
+      if (bestPrice === null || storePrice < bestPrice) {
+        bestPrice = storePrice;
+        bestStore = storeId;
+      }
+    }
+  }
+  
+  workspace.prices[productName].best_price = bestPrice;
+  workspace.prices[productName].best_store = bestStore;
+  
+  saveWorkspaces(workspaces);
+  
+  // Broadcast update via WebSocket
+  broadcastToWorkspace(req.workspaceId, {
+    type: 'price_updated',
+    data: {
+      product_name: productName,
+      price_data: workspace.prices[productName]
+    }
+  });
+  
+  res.json(workspace.prices[productName]);
+});
+
+// Delete price for product (all stores or specific store)
+app.delete('/prices/:productName', requireAccess, (req, res) => {
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[req.workspaceId];
+  const productName = decodeURIComponent(req.params.productName).toLowerCase();
+  const { store_id } = req.query;
+  
+  if (!workspace.prices || !workspace.prices[productName]) {
+    return res.status(404).json({ error: 'Price not found' });
+  }
+  
+  if (store_id) {
+    // Delete price for specific store
+    if (workspace.prices[productName].stores[store_id]) {
+      delete workspace.prices[productName].stores[store_id];
+      
+      // Update best price
+      const stores = workspace.prices[productName].stores;
+      let bestPrice = null;
+      let bestStore = null;
+      
+      for (const [sid, storeData] of Object.entries(stores)) {
+        const storePrice = storeData.price;
+        if (storePrice !== null && storePrice !== undefined) {
+          if (bestPrice === null || storePrice < bestPrice) {
+            bestPrice = storePrice;
+            bestStore = sid;
+          }
+        }
+      }
+      
+      workspace.prices[productName].best_price = bestPrice;
+      workspace.prices[productName].best_store = bestStore;
+      
+      // If no stores left, delete product entry
+      if (Object.keys(stores).length === 0) {
+        delete workspace.prices[productName];
+      }
+    }
+  } else {
+    // Delete all prices for product
+    delete workspace.prices[productName];
+  }
+  
+  saveWorkspaces(workspaces);
+  
+  // Broadcast update via WebSocket
+  broadcastToWorkspace(req.workspaceId, {
+    type: 'price_deleted',
+    data: {
+      product_name: productName,
+      store_id: store_id || null
+    }
+  });
+  
+  res.json({ success: true });
 });
 
 // Health check
