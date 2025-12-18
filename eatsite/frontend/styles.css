@@ -12,14 +12,14 @@
   --danger: #ef4444;
   --danger-dark: #dc2626;
   --warning: #f59e0b;
-  --background: #f1f5f9;
+  --background: #e2e8f0;
   --surface: #ffffff;
-  --surface-elevated: #ffffff;
+  --surface-elevated: #f8fafc;
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --border: #cbd5e1;
-  --border-light: #e2e8f0;
+  --text-secondary: #334155;
+  --text-muted: #475569;
+  --border: #94a3b8;
+  --border-light: #cbd5e1;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -40,19 +40,19 @@
   --danger: #f87171;
   --danger-dark: #ef4444;
   --warning: #fbbf24;
-  --background: #0f172a;
-  --surface: #1e293b;
-  --surface-elevated: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --background: #0a0e1a;
+  --surface: #1a1f2e;
+  --surface-elevated: #252b3a;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #cbd5e1;
   --border: #334155;
   --border-light: #475569;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --bg-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%);
 }
 
 * {
@@ -86,9 +86,9 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Светлая тема - серые тона */
+/* Светлая тема - более темный серый фон для лучшего контраста */
 :root {
-  --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  --bg-gradient: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
 }
 
 /* Убеждаемся, что градиент применяется правильно */
@@ -142,8 +142,17 @@ header {
 /* Улучшаем контраст header в светлой теме */
 :root:not([data-theme="dark"]) header {
   background: #ffffff;
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-color: #94a3b8;
+  border-width: 2px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Улучшаем контраст header в темной теме */
+[data-theme="dark"] header {
+  background: var(--surface);
+  border-color: var(--border);
+  border-width: 2px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 .menu-header {
@@ -404,8 +413,17 @@ header h1, header h2 {
 /* Улучшаем контраст навигации табов в светлой теме */
 :root:not([data-theme="dark"]) .tab-navigation {
   background: #ffffff;
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-color: #94a3b8;
+  border-width: 2px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Улучшаем контраст навигации табов в темной теме */
+[data-theme="dark"] .tab-navigation {
+  background: var(--surface);
+  border-color: var(--border);
+  border-width: 2px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 .tab-navigation::-webkit-scrollbar {
@@ -855,7 +873,14 @@ input::placeholder {
 
 /* Улучшаем контраст названия в светлой теме */
 :root:not([data-theme="dark"]) .product-name {
-  color: #0f172a;
+  color: #020617;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Улучшаем контраст названия в темной теме */
+[data-theme="dark"] .product-name {
+  color: #f8fafc;
   font-weight: 700;
 }
 
@@ -875,9 +900,10 @@ input::placeholder {
 
 /* Улучшаем контраст категории в светлой теме */
 :root:not([data-theme="dark"]) .product-category {
-  color: #475569;
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  color: #334155;
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  font-weight: 700;
 }
 
 [data-theme="dark"] .product-category {
