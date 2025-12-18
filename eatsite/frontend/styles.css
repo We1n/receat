@@ -12,14 +12,14 @@
   --danger: #ef4444;
   --danger-dark: #dc2626;
   --warning: #f59e0b;
-  --background: #f8fafc;
+  --background: #f1f5f9;
   --surface: #ffffff;
   --surface-elevated: #ffffff;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border: #cbd5e1;
+  --border-light: #e2e8f0;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -86,9 +86,14 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Убеждаемся, что светлая тема действительно светлая */
+/* Светлая тема - серые тона */
 :root {
-  --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+}
+
+/* Убеждаемся, что градиент применяется правильно */
+body {
+  background: var(--bg-gradient) !important;
 }
 
 #app {
