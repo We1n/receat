@@ -444,7 +444,7 @@ header h1, header h2 {
   min-width: 0;
   padding: 12px 8px;
   border: none;
-  background: transparent;
+  background: var(--surface-elevated);
   border-radius: var(--radius);
   cursor: pointer;
   transition: var(--transition);
@@ -454,9 +454,26 @@ header h1, header h2 {
   gap: 4px;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   position: relative;
   white-space: nowrap;
+  border: 2px solid var(--border);
+}
+
+/* Улучшаем видимость неактивных табов в светлой теме */
+:root:not([data-theme="dark"]) .tab-btn {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Улучшаем видимость неактивных табов в темной теме */
+[data-theme="dark"] .tab-btn {
+  background: var(--surface-elevated);
+  border-color: var(--border);
+  color: var(--text-secondary);
+  font-weight: 700;
 }
 
 .tab-btn::before {
@@ -464,20 +481,44 @@ header h1, header h2 {
 }
 
 .tab-btn:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.15);
   color: var(--primary);
+  border-color: var(--primary);
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
 }
 
 [data-theme="dark"] .tab-btn:hover {
-  background: rgba(129, 140, 248, 0.15);
+  background: rgba(129, 140, 248, 0.2);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 2px 4px rgba(129, 140, 248, 0.3);
+}
+
+/* Улучшаем видимость неактивных табов при наведении в светлой теме */
+:root:not([data-theme="dark"]) .tab-btn:hover {
+  background: #cbd5e1;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .tab-btn.active {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   color: white;
   box-shadow: var(--shadow);
+  border-color: var(--primary);
+  font-weight: 800;
+}
+
+/* Улучшаем видимость активного таба */
+.tab-btn.active .tab-icon {
+  stroke-width: 3;
+  opacity: 1;
+}
+
+.tab-btn.active .tab-label {
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 .tab-btn.active .tab-icon {
@@ -485,8 +526,8 @@ header h1, header h2 {
 }
 
 .tab-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   stroke: currentColor;
   stroke-width: 2.5;
   transition: var(--transition);
@@ -495,14 +536,32 @@ header h1, header h2 {
 
 /* Улучшаем контраст иконок табов в светлой теме */
 :root:not([data-theme="dark"]) .tab-icon {
+  stroke-width: 2.8;
+  opacity: 1;
+}
+
+/* Улучшаем контраст иконок табов в темной теме */
+[data-theme="dark"] .tab-icon {
   stroke-width: 2.5;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .tab-label {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.3px;
+}
+
+/* Улучшаем видимость текста табов в светлой теме */
+:root:not([data-theme="dark"]) .tab-label {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Улучшаем видимость текста табов в темной теме */
+[data-theme="dark"] .tab-label {
+  color: var(--text-secondary);
+  font-weight: 700;
 }
 
 .tab-panels {
