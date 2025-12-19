@@ -88,23 +88,22 @@ const wsConnections = new Map();
 
 wss.on('connection', (ws, req) => {
   const workspaceId = new URL(req.url, `http://${req.headers.host}`).searchParams.get('workspace_id');
-  const clientToken = new URL(req.url, `http://${req.headers.host}`).searchParams.get('client_token');
 
-  if (!workspaceId || !clientToken) {
-    ws.close(1008, 'Missing workspace_id or client_token');
+  if (!workspaceId) {
+    ws.close(1008, 'Missing workspace_id');
     return;
   }
 
-  // Проверка доступа
+  // Проверка существования workspace
   const workspaces = loadWorkspaces();
   const workspace = workspaces[workspaceId];
   
-  if (!workspace || !workspace.active_clients.includes(clientToken)) {
-    ws.close(1008, 'Access denied');
+  if (!workspace) {
+    ws.close(1008, 'Workspace not found');
     return;
   }
 
-  // Добавляем соединение
+  // Добавляем соединение (без токенов, просто по workspace_id)
   if (!wsConnections.has(workspaceId)) {
     wsConnections.set(workspaceId, new Set());
   }
@@ -148,16 +147,16 @@ function broadcastToWorkspace(workspaceId, message) {
   }
 }
 
-// Middleware для проверки доступа
+// Middleware для проверки доступа (только для записи)
+// Для чтения токен не требуется, workspace доступен по названию
 function requireAccess(req, res, next) {
   // Для маршрутов типа /products/:id или /recipes/:id, 
   // req.params.id - это ID продукта/рецепта, а не workspace_id
   // Поэтому workspace_id должен быть только в заголовках или query
   const workspaceId = req.params.workspaceId || req.headers['x-workspace-id'] || req.query.workspace_id;
-  const clientToken = req.headers['x-client-token'] || req.query.client_token;
 
-  if (!workspaceId || !clientToken) {
-    return res.status(401).json({ error: 'Missing workspace_id or client_token' });
+  if (!workspaceId) {
+    return res.status(400).json({ error: 'Missing workspace_id' });
   }
 
   const workspaces = loadWorkspaces();
@@ -167,13 +166,8 @@ function requireAccess(req, res, next) {
     return res.status(404).json({ error: 'Workspace not found' });
   }
 
-  if (!workspace.active_clients.includes(clientToken)) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-
   req.workspace = workspace;
   req.workspaceId = workspaceId;
-  req.clientToken = clientToken;
   next();
 }
 
@@ -188,15 +182,16 @@ app.get('/workspace/:id', (req, res) => {
     return res.status(404).json({ error: 'Workspace not found' });
   }
 
-  // Публичная информация (без данных)
+  // Публичная информация
   res.json({
     workspace_id: req.params.id,
-    active_clients_count: workspace.active_clients.length
+    exists: true
   });
 });
 
 app.post('/workspace/:id/join', (req, res) => {
   const workspaceId = req.params.id;
+  console.log(`[JOIN] Workspace join request: ${workspaceId}`);
   const workspaces = loadWorkspaces();
   let workspace = workspaces[workspaceId];
 
@@ -206,62 +201,73 @@ app.post('/workspace/:id/join', (req, res) => {
       workspace_id: workspaceId,
       products: [],
       recipes: [],
-      active_clients: [],
       prices: {}, // Инициализируем цены
       base_basket: BASE_BASKET // Инициализируем базовую корзину по умолчанию
     };
+    workspaces[workspaceId] = workspace;
+    saveWorkspaces(workspaces);
   } else {
     // Если у существующего workspace нет базовой корзины, добавляем по умолчанию
     if (!workspace.base_basket) {
       workspace.base_basket = BASE_BASKET;
+      workspaces[workspaceId] = workspace;
+      saveWorkspaces(workspaces);
     }
     // Если у существующего workspace нет цен, инициализируем
     if (!workspace.prices) {
       workspace.prices = {};
+      workspaces[workspaceId] = workspace;
+      saveWorkspaces(workspaces);
     }
   }
 
-  // Проверка лимита клиентов
-  const MAX_CLIENTS_PER_WORKSPACE = parseInt(process.env.MAX_CLIENTS_PER_WORKSPACE || '10', 10);
-  if (workspace.active_clients.length >= MAX_CLIENTS_PER_WORKSPACE) {
-    return res.status(403).json({ 
-      error: `Workspace is full (max ${MAX_CLIENTS_PER_WORKSPACE} clients)`,
-      can_access: false
-    });
-  }
-
-  // Генерируем новый client_token
-  const clientToken = uuidv4();
-  workspace.active_clients.push(clientToken);
-
-  workspaces[workspaceId] = workspace;
-  saveWorkspaces(workspaces);
-
+  // Workspace доступен всем по названию, без ограничений
+  console.log(`[JOIN] Allowing access to workspace: ${workspaceId}`);
   res.json({
-    client_token: clientToken,
     workspace_id: workspaceId,
     can_access: true
   });
 });
 
-app.get('/workspace/:id/state', requireAccess, (req, res) => {
+app.get('/workspace/:id/state', (req, res) => {
+  const workspaceId = req.params.id;
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[workspaceId];
+
+  if (!workspace) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
   // Нормализуем категории продуктов перед отправкой
-  const normalizedProducts = (req.workspace.products || []).map(product => ({
+  const normalizedProducts = (workspace.products || []).map(product => ({
     ...product,
     category: normalizeCategory(product.category)
   }));
 
   res.json({
-    workspace_id: req.workspaceId,
+    workspace_id: workspaceId,
     products: normalizedProducts,
-    recipes: req.workspace.recipes || []
+    recipes: workspace.recipes || []
   });
 });
 
 // Products
-app.get('/products', requireAccess, (req, res) => {
+app.get('/products', (req, res) => {
+  const workspaceId = req.query.workspace_id || req.headers['x-workspace-id'];
+  
+  if (!workspaceId) {
+    return res.status(400).json({ error: 'Missing workspace_id' });
+  }
+
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[workspaceId];
+
+  if (!workspace) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
   // Нормализуем категории продуктов перед отправкой
-  const normalizedProducts = (req.workspace.products || []).map(product => ({
+  const normalizedProducts = (workspace.products || []).map(product => ({
     ...product,
     category: normalizeCategory(product.category)
   }));
@@ -341,8 +347,21 @@ app.delete('/products/:id', requireAccess, (req, res) => {
 });
 
 // Recipes
-app.get('/recipes', requireAccess, (req, res) => {
-  res.json(req.workspace.recipes || []);
+app.get('/recipes', (req, res) => {
+  const workspaceId = req.query.workspace_id || req.headers['x-workspace-id'];
+  
+  if (!workspaceId) {
+    return res.status(400).json({ error: 'Missing workspace_id' });
+  }
+
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[workspaceId];
+
+  if (!workspace) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
+  res.json(workspace.recipes || []);
 });
 
 app.post('/recipes', requireAccess, (req, res) => {
@@ -482,11 +501,18 @@ const BASE_BASKET = [
 ];
 
 // Получение базовой корзины
-app.get('/workspace/:id/base-basket', requireAccess, (req, res) => {
-  const workspace = req.workspace;
+app.get('/workspace/:id/base-basket', (req, res) => {
+  const workspaceId = req.params.id;
+  const workspaces = loadWorkspaces();
+  const workspace = workspaces[workspaceId];
+
+  if (!workspace) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+
   const baseBasket = workspace.base_basket || BASE_BASKET;
   res.json({
-    workspace_id: req.workspaceId,
+    workspace_id: workspaceId,
     base_basket: baseBasket
   });
 });
@@ -750,4 +776,5 @@ app.delete('/prices/:productName', requireAccess, (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
 

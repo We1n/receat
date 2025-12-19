@@ -37,7 +37,6 @@ const WS_BASE = getWSBase();
 
 // State
 let workspaceId = null;
-let clientToken = null;
 let ws = null;
 let currentProducts = [];
 let currentRecipes = [];
@@ -72,12 +71,11 @@ function init() {
   // Инициализируем тему
   initTheme();
   
-  // Проверяем сохранённый токен
-  clientToken = localStorage.getItem('client_token');
+  // Проверяем сохранённый workspace_id
   workspaceId = localStorage.getItem('workspace_id');
 
-  if (clientToken && workspaceId) {
-    connectToWorkspace(workspaceId, clientToken);
+  if (workspaceId) {
+    connectToWorkspace(workspaceId);
   } else {
     showScreen('publicLanding');
     // Hide bottom nav on public landing
@@ -224,13 +222,11 @@ function switchWorkspace() {
   }
   
   // Очищаем данные
-  clientToken = null;
   workspaceId = null;
   currentProducts = [];
   currentRecipes = [];
   
   // Очищаем localStorage
-  localStorage.removeItem('client_token');
   localStorage.removeItem('workspace_id');
   
   // Показываем экран входа
@@ -256,15 +252,12 @@ async function joinWorkspace(id) {
 
     const data = await response.json();
 
-    if (data.can_access && data.client_token) {
-      clientToken = data.client_token;
+    if (data.can_access) {
       workspaceId = data.workspace_id;
-      localStorage.setItem('client_token', clientToken);
       localStorage.setItem('workspace_id', workspaceId);
-      connectToWorkspace(workspaceId, clientToken);
+      connectToWorkspace(workspaceId);
     } else {
-      const maxClients = data.error?.match(/max (\d+) clients/)?.[1] || '2';
-      showToast(`Workspace переполнен (максимум ${maxClients} клиентов)`, 'warning', 5000);
+      showToast('Не удалось подключиться к workspace', 'error', 5000);
     }
   } catch (error) {
     console.error('Failed to join workspace:', error);
@@ -272,14 +265,14 @@ async function joinWorkspace(id) {
   }
 }
 
-function connectToWorkspace(id, token) {
+function connectToWorkspace(id) {
   // Закрываем предыдущее соединение
   if (ws) {
     ws.close();
   }
 
-  // Подключаемся к WebSocket
-  ws = new WebSocket(`${WS_BASE}?workspace_id=${id}&client_token=${token}`);
+  // Подключаемся к WebSocket (токен больше не требуется)
+  ws = new WebSocket(`${WS_BASE}?workspace_id=${id}`);
 
   ws.onopen = () => {
     console.log('WebSocket connected');
@@ -302,13 +295,6 @@ function connectToWorkspace(id, token) {
   };
 }
 
-// Вспомогательная функция для создания заголовков
-function getAuthHeaders() {
-  return {
-    'X-Client-Token': clientToken,
-    'X-Workspace-Id': workspaceId
-  };
-}
 
 // Toast Notifications
 function showToast(message, type = 'info', duration = 3000) {
@@ -389,13 +375,9 @@ async function loadInitialState() {
     // Загружаем категории, состояние, магазины и цены параллельно для максимальной скорости
     const [categoriesResponse, stateResponse, storesResponse, pricesResponse] = await Promise.all([
       fetch(`${API_BASE}/categories`),
-      fetch(`${API_BASE}/workspace/${workspaceId}/state`, {
-        headers: getAuthHeaders()
-      }),
+      fetch(`${API_BASE}/workspace/${workspaceId}/state`),
       fetch(`${API_BASE}/stores`),
-      fetch(`${API_BASE}/prices`, {
-        headers: getAuthHeaders()
-      }).catch(() => ({ ok: false })) // Если цены не загрузились, продолжаем
+      fetch(`${API_BASE}/prices?workspace_id=${workspaceId}`).catch(() => ({ ok: false })) // Если цены не загрузились, продолжаем
     ]);
 
     // Обрабатываем категории
@@ -913,11 +895,10 @@ window.toggleProductStock = async function(productId) {
 
 async function createProduct(productData) {
   try {
-    const response = await fetch(`${API_BASE}/products`, {
+    const response = await fetch(`${API_BASE}/products?workspace_id=${workspaceId}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(productData)
     });
@@ -935,11 +916,10 @@ async function createProduct(productData) {
 
 async function updateProduct(productId, updates) {
   try {
-    const response = await fetch(`${API_BASE}/products/${productId}`, {
+    const response = await fetch(`${API_BASE}/products/${productId}?workspace_id=${workspaceId}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(updates)
     });
@@ -957,16 +937,14 @@ async function updateProduct(productId, updates) {
 
 async function deleteProduct(productId) {
   try {
-    if (!workspaceId || !clientToken) {
+    if (!workspaceId) {
       throw new Error('Не авторизован. Переподключитесь к workspace.');
     }
 
-    const headers = getAuthHeaders();
-    console.log('Deleting product:', productId, 'Workspace:', workspaceId, 'Headers:', headers);
+    console.log('Deleting product:', productId, 'Workspace:', workspaceId);
 
-    const response = await fetch(`${API_BASE}/products/${productId}`, {
-      method: 'DELETE',
-      headers: headers
+    const response = await fetch(`${API_BASE}/products/${productId}?workspace_id=${workspaceId}`, {
+      method: 'DELETE'
     });
 
     if (!response.ok) {
@@ -1060,11 +1038,10 @@ window.editRecipe = function(recipeId) {
 
 async function createRecipe(recipeData) {
   try {
-    const response = await fetch(`${API_BASE}/recipes`, {
+    const response = await fetch(`${API_BASE}/recipes?workspace_id=${workspaceId}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(recipeData)
     });
@@ -1081,11 +1058,10 @@ async function createRecipe(recipeData) {
 
 async function updateRecipe(recipeId, updates) {
   try {
-    const response = await fetch(`${API_BASE}/recipes/${recipeId}`, {
+    const response = await fetch(`${API_BASE}/recipes/${recipeId}?workspace_id=${workspaceId}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(updates)
     });
@@ -1102,9 +1078,8 @@ async function updateRecipe(recipeId, updates) {
 
 async function deleteRecipe(recipeId) {
   try {
-    const response = await fetch(`${API_BASE}/recipes/${recipeId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
+    const response = await fetch(`${API_BASE}/recipes/${recipeId}?workspace_id=${workspaceId}`, {
+      method: 'DELETE'
     });
 
     if (!response.ok) {
@@ -1202,14 +1177,12 @@ function renderWishlist() {
 }
 
 async function loadBaseBasket() {
-  if (!workspaceId || !clientToken) {
+  if (!workspaceId) {
     return;
   }
 
   try {
-    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/base-basket`, {
-      headers: getAuthHeaders()
-    });
+    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/base-basket`);
 
     if (response.ok) {
       const data = await response.json();
@@ -1324,7 +1297,7 @@ window.removeBasketItem = function(index) {
 };
 
 async function saveBaseBasket() {
-  if (!workspaceId || !clientToken) {
+  if (!workspaceId) {
     alert('Не авторизован. Переподключитесь к workspace.');
     return;
   }
@@ -1341,11 +1314,10 @@ async function saveBaseBasket() {
   }).filter(item => item.name); // Убираем пустые
 
   try {
-    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/base-basket`, {
+    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/base-basket?workspace_id=${workspaceId}`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ base_basket: items })
     });
@@ -1365,7 +1337,7 @@ async function saveBaseBasket() {
 }
 
 async function initBasket() {
-  if (!workspaceId || !clientToken) {
+  if (!workspaceId) {
     alert('Не авторизован. Переподключитесь к workspace.');
     return;
   }
@@ -1375,9 +1347,11 @@ async function initBasket() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/init-basket`, {
+    const response = await fetch(`${API_BASE}/workspace/${workspaceId}/init-basket?workspace_id=${workspaceId}`, {
       method: 'POST',
-      headers: getAuthHeaders()
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
 
     if (!response.ok) {
@@ -1533,9 +1507,8 @@ window.deletePrice = async function(productName, storeId) {
   }
   
   try {
-    const response = await fetch(`${API_BASE}/prices/${encodeURIComponent(productName)}?store_id=${storeId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
+    const response = await fetch(`${API_BASE}/prices/${encodeURIComponent(productName)}?store_id=${storeId}&workspace_id=${workspaceId}`, {
+      method: 'DELETE'
     });
     
     if (!response.ok) {
@@ -1581,11 +1554,10 @@ window.deletePrice = async function(productName, storeId) {
 
 async function setPrice(productName, price, storeId) {
   try {
-    const response = await fetch(`${API_BASE}/prices`, {
+    const response = await fetch(`${API_BASE}/prices?workspace_id=${workspaceId}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         product_name: productName,
